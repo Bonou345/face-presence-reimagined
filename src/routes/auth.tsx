@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScanFace, Loader2 } from "lucide-react";
+import { ScanFace, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 const searchSchema = z.object({ redirect: z.string().optional() });
@@ -85,6 +85,7 @@ function AuthPage() {
 function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -110,7 +111,24 @@ function SignIn() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="pwd">Mot de passe</Label>
-            <Input id="pwd" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="relative">
+              <Input
+                id="pwd"
+                type={showPwd ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                aria-label={showPwd ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted-foreground hover:text-foreground"
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <Button type="submit" disabled={busy} className="w-full">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Se connecter
@@ -125,6 +143,7 @@ function SignUp() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [role, setRole] = useState<"student" | "teacher" | "parent">("student");
   const [busy, setBusy] = useState(false);
 
@@ -162,7 +181,25 @@ function SignUp() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="pwd2">Mot de passe (min. 6)</Label>
-            <Input id="pwd2" type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="relative">
+              <Input
+                id="pwd2"
+                type={showPwd ? "text" : "password"}
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                aria-label={showPwd ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted-foreground hover:text-foreground"
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Je suis</Label>
