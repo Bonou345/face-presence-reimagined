@@ -42,7 +42,6 @@ export function getRekognitionRuntime(): RekognitionRuntime {
       useDualstackEndpoint: false,
       credentials: { accessKeyId, secretAccessKey },
       requestHandler: new FetchHttpHandler({
-        connectionTimeout: 10_000,
         requestTimeout: 30_000,
       }),
     }),
