@@ -43,14 +43,16 @@ function FaceSetupPage() {
 
   useEffect(() => () => stream?.getTracks().forEach((t) => t.stop()), [stream]);
 
-  // Attach stream to <video> once it mounts (the element is conditionally rendered)
-  useEffect(() => {
-    const v = videoRef.current;
-    if (v && stream && v.srcObject !== stream) {
-      v.srcObject = stream;
-      v.play().catch(() => {});
+  // Callback ref: fires the instant <video> mounts, so we can attach the stream
+  // synchronously without relying on a separate effect + ref timing.
+  const attachVideo = (el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && stream && el.srcObject !== stream) {
+      el.srcObject = stream;
+      const p = el.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
     }
-  }, [stream]);
+  };
 
   async function startCamera() {
     setCamError(null);
@@ -72,11 +74,14 @@ function FaceSetupPage() {
       const s = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 640 } },
       });
-      setStream(s);
+      // If the <video> is already mounted, attach synchronously (preserves the
+      // user-gesture context for play()). Otherwise the callback ref handles it.
       if (videoRef.current) {
         videoRef.current.srcObject = s;
-        await videoRef.current.play().catch(() => {});
+        const p = videoRef.current.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
       }
+      setStream(s);
     } catch (e: unknown) {
       const err = e as { name?: string; message?: string };
       const name = err?.name ?? "";
@@ -236,7 +241,7 @@ function FaceSetupPage() {
               </>
             ) : stream ? (
               <>
-                <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full max-w-sm rounded-xl bg-muted object-cover" />
+                <video ref={attachVideo} autoPlay playsInline muted className="aspect-square w-full max-w-sm rounded-xl bg-muted object-cover" />
                 <Button onClick={capture} className="mt-4 gap-2"><Camera className="h-4 w-4" /> Capturer</Button>
               </>
             ) : (
