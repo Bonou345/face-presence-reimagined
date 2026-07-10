@@ -9,6 +9,7 @@ import {
   CreateCollectionCommand,
   DescribeCollectionCommand,
 } from "@aws-sdk/client-rekognition";
+import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 
 /**
  * AWS Rekognition integration.
@@ -35,6 +36,7 @@ function client(): RekognitionClient {
   return new RekognitionClient({
     region,
     credentials: { accessKeyId, secretAccessKey },
+    requestHandler: new FetchHttpHandler(),
   });
 }
 
