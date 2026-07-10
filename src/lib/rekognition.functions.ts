@@ -36,6 +36,7 @@ function client(): RekognitionClient {
   return new RekognitionClient({
     region,
     credentials: { accessKeyId, secretAccessKey },
+    requestHandler: new FetchHttpHandler(),
   });
 }
 
