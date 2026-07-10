@@ -19,6 +19,7 @@ import { Plus, Video, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { CreateClassDialog } from "@/components/CreateClassDialog";
 
 export const Route = createFileRoute("/_authenticated/sessions/")({
   head: () => ({ meta: [{ title: "Sessions — FacePresence" }] }),
