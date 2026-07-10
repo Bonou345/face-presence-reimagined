@@ -104,6 +104,40 @@ export const indexStudentFace = createServerFn({ method: "POST" })
  * appartient à l'élève courant avec une similarité >= 80%, on enregistre
  * la présence (status=present, verification_method=facial_recognition).
  */
+/**
+ * Supprime la photo de référence de l'utilisateur : Rekognition, Storage, DB.
+ */
+export const deleteStudentFace = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    const { data: existing } = await supabase
+      .from("face_profiles")
+      .select("rekognition_face_id")
+      .eq("student_id", userId)
+      .maybeSingle();
+
+    if (existing?.rekognition_face_id) {
+      const rk = getRekognitionRuntime();
+      try {
+        await deleteRekognitionFace(rk, existing.rekognition_face_id);
+      } catch {
+        // ignore
+      }
+    }
+
+    await supabase.storage.from("face-images").remove([`${userId}/reference.jpg`]);
+
+    const { error } = await supabase
+      .from("face_profiles")
+      .delete()
+      .eq("student_id", userId);
+    if (error) throw new Error(error.message);
+
+    return { ok: true };
+  });
+
 export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
