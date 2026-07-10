@@ -32,6 +32,7 @@ function FaceSetupPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const indexFace = useServerFn(indexStudentFace);
+  const removeFace = useServerFn(deleteStudentFace);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
