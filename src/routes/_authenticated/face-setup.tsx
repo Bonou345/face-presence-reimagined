@@ -169,6 +169,17 @@ function FaceSetupPage() {
     onSettled: () => setEnrolling(false),
   });
 
+  const deleteProfile = useMutation({
+    mutationFn: async () => {
+      await removeFace({});
+    },
+    onSuccess: () => {
+      toast.success("Photo supprimée");
+      qc.invalidateQueries({ queryKey: ["face-profile", user?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const openInNewTab = () => window.open(window.location.href, "_blank", "noopener,noreferrer");
 
   return (
