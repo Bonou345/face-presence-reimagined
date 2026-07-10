@@ -5,6 +5,7 @@ import {
   RekognitionClient,
   SearchFacesByImageCommand,
 } from "@aws-sdk/client-rekognition";
+import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 
 const COLLECTION = () =>
   process.env.AWS_REKOGNITION_COLLECTION || "classconnect-faces";
@@ -16,7 +17,11 @@ function client(): RekognitionClient {
   if (!region || !accessKeyId || !secretAccessKey) {
     throw new Error("AWS Rekognition n'est pas configuré.");
   }
-  return new RekognitionClient({ region, credentials: { accessKeyId, secretAccessKey } });
+  return new RekognitionClient({
+    region,
+    credentials: { accessKeyId, secretAccessKey },
+    requestHandler: new FetchHttpHandler(),
+  });
 }
 
 function dataUrlToBytes(dataUrl: string): Uint8Array {
