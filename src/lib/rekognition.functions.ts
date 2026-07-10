@@ -2,14 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
-  RekognitionClient,
-  IndexFacesCommand,
-  SearchFacesByImageCommand,
-  DeleteFacesCommand,
-  CreateCollectionCommand,
-  DescribeCollectionCommand,
-} from "@aws-sdk/client-rekognition";
-import { FetchHttpHandler } from "@smithy/fetch-http-handler";
+  dataUrlToBytes,
+  deleteRekognitionFace,
+  ensureRekognitionCollection,
+  getRekognitionRuntime,
+  indexRekognitionFace,
+  rekognitionErrorMessage,
+  searchRekognitionFace,
+} from "@/lib/rekognition.server";
 
 /**
  * AWS Rekognition integration.
@@ -20,46 +20,6 @@ import { FetchHttpHandler } from "@smithy/fetch-http-handler";
  *   AWS_REGION             (ex: eu-west-1)
  *   AWS_REKOGNITION_COLLECTION (ex: classconnect-faces)
  */
-
-const COLLECTION = () =>
-  process.env.AWS_REKOGNITION_COLLECTION || "classconnect-faces";
-
-function client(): RekognitionClient {
-  const region = process.env.AWS_REGION;
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  if (!region || !accessKeyId || !secretAccessKey) {
-    throw new Error(
-      "AWS Rekognition n'est pas configuré. Ajoutez AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY et AWS_REGION dans les secrets du projet.",
-    );
-  }
-  return new RekognitionClient({
-    region,
-    credentials: { accessKeyId, secretAccessKey },
-    requestHandler: new FetchHttpHandler(),
-  });
-}
-
-async function ensureCollection(rk: RekognitionClient) {
-  const name = COLLECTION();
-  try {
-    await rk.send(new DescribeCollectionCommand({ CollectionId: name }));
-  } catch (e: unknown) {
-    const err = e as { name?: string };
-    if (err?.name === "ResourceNotFoundException") {
-      await rk.send(new CreateCollectionCommand({ CollectionId: name }));
-    } else {
-      throw e;
-    }
-  }
-}
-
-function dataUrlToBytes(dataUrl: string): Uint8Array {
-  const idx = dataUrl.indexOf(",");
-  const b64 = idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
-  const bin = Buffer.from(b64, "base64");
-  return new Uint8Array(bin);
-}
 
 /**
  * Index la photo de référence de l'utilisateur dans la collection AWS,
@@ -76,8 +36,12 @@ export const indexStudentFace = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const rk = client();
-    await ensureCollection(rk);
+    const rk = getRekognitionRuntime();
+    try {
+      await ensureRekognitionCollection(rk);
+    } catch (e: unknown) {
+      throw new Error(rekognitionErrorMessage(e, rk.region));
+    }
 
     const bytes = dataUrlToBytes(data.imageDataUrl);
     if (bytes.length > 5 * 1024 * 1024) {
@@ -92,35 +56,19 @@ export const indexStudentFace = createServerFn({ method: "POST" })
       .maybeSingle();
     if (existing?.rekognition_face_id) {
       try {
-        await rk.send(
-          new DeleteFacesCommand({
-            CollectionId: COLLECTION(),
-            FaceIds: [existing.rekognition_face_id],
-          }),
-        );
+        await deleteRekognitionFace(rk, existing.rekognition_face_id);
       } catch {
         // ignore si déjà supprimé
       }
     }
 
-    const res = await rk.send(
-      new IndexFacesCommand({
-        CollectionId: COLLECTION(),
-        Image: { Bytes: bytes },
-        ExternalImageId: userId,
-        DetectionAttributes: ["DEFAULT"],
-        MaxFaces: 1,
-        QualityFilter: "AUTO",
-      }),
-    );
-
-    const record = res.FaceRecords?.[0];
-    if (!record?.Face?.FaceId) {
-      throw new Error(
-        "Aucun visage exploitable détecté. Reprenez la photo de face, bien éclairée.",
-      );
+    let indexed;
+    try {
+      indexed = await indexRekognitionFace(rk, bytes, userId);
+    } catch (e: unknown) {
+      throw new Error(rekognitionErrorMessage(e, rk.region));
     }
-    const faceId = record.Face.FaceId;
+    const faceId = indexed.faceId;
 
     // Upload de la photo de référence dans le bucket privé
     const path = `${userId}/reference.jpg`;
@@ -148,7 +96,7 @@ export const indexStudentFace = createServerFn({ method: "POST" })
     );
     if (upErr) throw new Error(upErr.message);
 
-    return { faceId, confidence: record.Face.Confidence ?? null };
+    return { faceId, confidence: indexed.confidence };
   });
 
 /**
@@ -168,30 +116,18 @@ export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const rk = client();
+    const rk = getRekognitionRuntime();
 
     const bytes = dataUrlToBytes(data.imageDataUrl);
-    let res;
+    let match;
     try {
-      res = await rk.send(
-        new SearchFacesByImageCommand({
-          CollectionId: COLLECTION(),
-          Image: { Bytes: bytes },
-          FaceMatchThreshold: 80,
-          MaxFaces: 1,
-        }),
-      );
+      match = await searchRekognitionFace(rk, bytes, 80);
     } catch (e: unknown) {
-      const err = e as { name?: string; message?: string };
-      if (err?.name === "InvalidParameterException") {
-        throw new Error("Aucun visage détecté sur la photo.");
-      }
-      throw new Error(err?.message ?? "Échec Rekognition");
+      throw new Error(rekognitionErrorMessage(e, rk.region));
     }
 
-    const match = res.FaceMatches?.[0];
-    const externalId = match?.Face?.ExternalImageId;
-    const similarity = match?.Similarity ?? 0;
+    const externalId = match.externalImageId;
+    const similarity = match.similarity;
 
     if (!match || externalId !== userId || similarity < 80) {
       // Marque comme pending pour audit, mais ne valide pas

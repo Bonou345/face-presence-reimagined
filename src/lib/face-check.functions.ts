@@ -2,33 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
-  RekognitionClient,
-  SearchFacesByImageCommand,
-} from "@aws-sdk/client-rekognition";
-import { FetchHttpHandler } from "@smithy/fetch-http-handler";
-
-const COLLECTION = () =>
-  process.env.AWS_REKOGNITION_COLLECTION || "classconnect-faces";
-
-function client(): RekognitionClient {
-  const region = process.env.AWS_REGION;
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  if (!region || !accessKeyId || !secretAccessKey) {
-    throw new Error("AWS Rekognition n'est pas configuré.");
-  }
-  return new RekognitionClient({
-    region,
-    credentials: { accessKeyId, secretAccessKey },
-    requestHandler: new FetchHttpHandler(),
-  });
-}
-
-function dataUrlToBytes(dataUrl: string): Uint8Array {
-  const idx = dataUrl.indexOf(",");
-  const b64 = idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
-  return new Uint8Array(Buffer.from(b64, "base64"));
-}
+  dataUrlToBytes,
+  getRekognitionRuntime,
+  rekognitionErrorMessage,
+  searchRekognitionFace,
+} from "@/lib/rekognition.server";
 
 /** Enseignant : lance une nouvelle vérification faciale ponctuelle. */
 export const startFaceCheckRound = createServerFn({ method: "POST" })
@@ -99,27 +77,18 @@ export const submitFaceCheckResult = createServerFn({ method: "POST" })
 
     const threshold = (round as { threshold?: number | null }).threshold ?? 80;
     const bytes = dataUrlToBytes(data.imageDataUrl);
-    const rk = client();
+    const rk = getRekognitionRuntime();
 
     let similarity = 0;
     let matched = false;
     let errMsg: string | null = null;
 
     try {
-      const res = await rk.send(new SearchFacesByImageCommand({
-        CollectionId: COLLECTION(),
-        Image: { Bytes: bytes },
-        FaceMatchThreshold: threshold,
-        MaxFaces: 1,
-      }));
-      const m = res.FaceMatches?.[0];
-      similarity = Number((m?.Similarity ?? 0).toFixed(2));
-      matched = !!m && m.Face?.ExternalImageId === userId && similarity >= threshold;
+      const result = await searchRekognitionFace(rk, bytes, threshold);
+      similarity = Number(result.similarity.toFixed(2));
+      matched = result.externalImageId === userId && similarity >= threshold;
     } catch (e: unknown) {
-      const err = e as { name?: string; message?: string };
-      errMsg = err?.name === "InvalidParameterException"
-        ? "Aucun visage détecté."
-        : (err?.message ?? "Échec Rekognition");
+      errMsg = rekognitionErrorMessage(e, rk.region);
     }
 
     // enregistre le résultat de ce round
