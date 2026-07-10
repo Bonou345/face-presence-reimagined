@@ -1,0 +1,2 @@
+CREATE POLICY classes_teacher_insert ON public.classes FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(), 'teacher') AND created_by = auth.uid());
+CREATE POLICY classes_teacher_update_own ON public.classes FOR UPDATE TO authenticated USING (has_role(auth.uid(), 'teacher') AND created_by = auth.uid()) WITH CHECK (created_by = auth.uid());

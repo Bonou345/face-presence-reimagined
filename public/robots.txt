@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /sessions
+Disallow: /classes
+Disallow: /users
+Disallow: /attendance
+Disallow: /face-setup
+Disallow: /settings

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.link_creator_as_class_teacher() FROM anon, authenticated, PUBLIC;
