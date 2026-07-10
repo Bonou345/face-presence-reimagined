@@ -4,23 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteStudentFace, indexStudentFace } from "@/lib/rekognition.functions";
+import { indexStudentFace } from "@/lib/rekognition.functions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Camera, ScanFace, CheckCircle2, Loader2, Upload, AlertTriangle, ExternalLink, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Camera, ScanFace, CheckCircle2, Loader2, Upload, AlertTriangle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/face-setup")({
@@ -32,7 +21,6 @@ function FaceSetupPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const indexFace = useServerFn(indexStudentFace);
-  const removeFace = useServerFn(deleteStudentFace);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -169,17 +157,6 @@ function FaceSetupPage() {
     onSettled: () => setEnrolling(false),
   });
 
-  const deleteProfile = useMutation({
-    mutationFn: async () => {
-      await removeFace({});
-    },
-    onSuccess: () => {
-      toast.success("Photo supprimée");
-      qc.invalidateQueries({ queryKey: ["face-profile", user?.id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const openInNewTab = () => window.open(window.location.href, "_blank", "noopener,noreferrer");
 
   return (
@@ -201,28 +178,8 @@ function FaceSetupPage() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <CardContent>
             <img src={profile.image_url} alt="Profil facial" className="h-48 w-48 rounded-lg object-cover" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2" disabled={deleteProfile.isPending}>
-                  {deleteProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  Supprimer la photo
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Supprimer votre photo de référence ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Votre profil facial sera retiré d'AWS Rekognition et du stockage. La vérification automatique de présence ne fonctionnera plus tant que vous n'enregistrerez pas une nouvelle photo.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => deleteProfile.mutate()}>Supprimer</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </CardContent>
         </Card>
       )}
