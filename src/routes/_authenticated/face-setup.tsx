@@ -178,28 +178,8 @@ function FaceSetupPage() {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <CardContent>
             <img src={profile.image_url} alt="Profil facial" className="h-48 w-48 rounded-lg object-cover" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2" disabled={deleteProfile.isPending}>
-                  {deleteProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  Supprimer la photo
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Supprimer votre photo de référence ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Votre profil facial sera retiré d'AWS Rekognition et du stockage. La vérification automatique de présence ne fonctionnera plus tant que vous n'enregistrerez pas une nouvelle photo.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => deleteProfile.mutate()}>Supprimer</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </CardContent>
         </Card>
       )}
