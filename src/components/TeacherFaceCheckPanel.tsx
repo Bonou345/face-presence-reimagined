@@ -202,6 +202,43 @@ export function TeacherFaceCheckPanel({ sessionId }: Props) {
   );
 }
 
+function ManualCorrect({ sessionId, studentId }: { sessionId: string; studentId: string }) {
+  const qc = useQueryClient();
+  const correct = useServerFn(correctAttendanceManually);
+  const [pending, setPending] = useState<"present" | "partial" | "absent" | null>(null);
+
+  async function apply(status: "present" | "partial" | "absent") {
+    setPending(status);
+    try {
+      const res = await correct({ data: { sessionId, studentId, status } });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Présence corrigée");
+      qc.invalidateQueries({ queryKey: ["session-attendances", sessionId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" disabled={pending !== null} onClick={() => apply("present")}>
+        {pending === "present" ? <Loader2 className="h-3 w-3 animate-spin" /> : "P"}
+      </Button>
+      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" disabled={pending !== null} onClick={() => apply("partial")}>
+        {pending === "partial" ? <Loader2 className="h-3 w-3 animate-spin" /> : "½"}
+      </Button>
+      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" disabled={pending !== null} onClick={() => apply("absent")}>
+        {pending === "absent" ? <Loader2 className="h-3 w-3 animate-spin" /> : "A"}
+      </Button>
+    </div>
+  );
+}
+
 function ThresholdEditor({ sessionId }: { sessionId: string }) {
   const qc = useQueryClient();
   const { data } = useQuery({
