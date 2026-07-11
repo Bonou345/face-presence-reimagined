@@ -158,10 +158,8 @@ function SessionDetail() {
     studentAttendance?.verification_method === "facial_recognition" &&
     (studentAttendance.status === "present" || studentAttendance.status === "partial");
   const isStudentChecked = !!hasStudentFaceVerification;
-  const canStudentJoinZoom =
-    role === "student" &&
-    !!studentAttendance &&
-    !!hasStudentFaceVerification;
+  // Note: l'accès Zoom est recalculé côté serveur au clic (getSessionJoinUrl).
+
 
   // Heartbeat toutes les 30s + signal de départ
   useEffect(() => {
@@ -202,13 +200,14 @@ function SessionDetail() {
           {session.zoom_meeting_id ? (
             <JoinZoomButton
               sessionId={id}
-              canJoin={canJoinAsStaff || canStudentJoinZoom}
-              blockedReason={
+              hint={
                 canJoinAsStaff
                   ? undefined
                   : !hasFaceProfile
                   ? "Enregistrez d'abord votre photo de référence."
-                  : "Vérification faciale requise avant de rejoindre."
+                  : !hasStudentFaceVerification
+                  ? "Vérification faciale requise avant de rejoindre."
+                  : undefined
               }
             />
           ) : canManageSession ? (
@@ -382,35 +381,26 @@ function RegenerateZoomButton({ sessionId }: { sessionId: string }) {
 
 function JoinZoomButton({
   sessionId,
-  canJoin,
-  blockedReason,
+  hint,
 }: {
   sessionId: string;
-  canJoin: boolean;
-  blockedReason?: string;
+  hint?: string;
 }) {
   const [pending, setPending] = useState(false);
   const getUrl = useServerFn(getSessionJoinUrl);
-
-  if (!canJoin) {
-    return (
-      <Button variant="outline" disabled className="gap-2" title={blockedReason}>
-        <Video className="h-4 w-4" />
-        {blockedReason ?? "Vérification faciale requise avant de rejoindre"}
-      </Button>
-    );
-  }
 
   return (
     <Button
       className="gap-2"
       disabled={pending}
+      title={hint}
       onClick={async () => {
         setPending(true);
         try {
+          // Le serveur recalcule les droits à chaque clic (source de vérité).
           const r = await getUrl({ data: { sessionId } });
           if (!r.ok) {
-            toast.error(r.error);
+            toast.error(r.error ?? hint ?? "Accès Zoom refusé.");
             return;
           }
           window.open(r.joinUrl, "_blank", "noopener,noreferrer");
@@ -422,7 +412,7 @@ function JoinZoomButton({
       }}
     >
       <Video className="h-4 w-4" />
-      {pending ? "Ouverture…" : "Rejoindre Zoom"}
+      {pending ? "Vérification…" : "Rejoindre Zoom"}
       <ExternalLink className="h-3.5 w-3.5" />
     </Button>
   );
