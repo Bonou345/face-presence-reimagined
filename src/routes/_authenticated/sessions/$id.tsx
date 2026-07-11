@@ -185,18 +185,7 @@ function SessionDetail() {
         </div>
         <div className="flex gap-2">
           {session.zoom_meeting_id ? (
-            <JoinZoomButton
-              sessionId={id}
-              hint={
-                canJoinAsStaff
-                  ? undefined
-                  : !hasFaceProfile
-                  ? "Enregistrez d'abord votre photo de référence."
-                  : !hasStudentFaceVerification
-                  ? "Vérification faciale requise avant de rejoindre."
-                  : undefined
-              }
-            />
+            <JoinZoomButton sessionId={id} />
           ) : canManageSession ? (
             <RegenerateZoomButton sessionId={id} />
           ) : (
@@ -210,7 +199,7 @@ function SessionDetail() {
           <CardHeader><CardTitle className="font-display">Rejoindre la session</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              Vous n'êtes pas encore inscrit à cette classe. Rejoignez-la pour valider votre présence.
+              Vous n'êtes pas encore inscrit à cette classe. Rejoignez-la pour être notifié des vérifications faciales lancées par l'enseignant.
             </p>
             <Button onClick={() => joinClass.mutate()} disabled={joinClass.isPending} className="gap-2">
               <UserPlus className="h-4 w-4" /> {joinClass.isPending ? "Inscription…" : "Rejoindre"}
@@ -221,11 +210,10 @@ function SessionDetail() {
 
       {role === "student" && myEnrollment && !faceLoading && !hasFaceProfile && (
         <Card className="mb-6 border-primary/40">
-          <CardHeader><CardTitle className="font-display">Photo de référence requise</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display">Photo de référence recommandée</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              Avant de valider votre présence, vous devez enregistrer une photo de référence.
-              Elle servira à vous reconnaître à chaque connexion.
+              Enregistrez une photo de référence pour pouvoir répondre aux vérifications faciales lancées par l'enseignant pendant la session.
             </p>
             <Link to="/face-setup">
               <Button className="gap-2">
@@ -236,38 +224,25 @@ function SessionDetail() {
         </Card>
       )}
 
-      {role === "student" && myEnrollment && hasFaceProfile && (
+      {role === "student" && myEnrollment && studentAttendance && (
         <Card className="mb-6">
           <CardHeader><CardTitle className="font-display">Ma présence</CardTitle></CardHeader>
           <CardContent>
-            {studentAttendance ? (
-              <div className="flex items-center gap-3">
-                <Badge variant={studentAttendance.status === "present" ? "default" : "secondary"}>
-                  {studentAttendance.status}
-                </Badge>
-                {studentAttendance.confidence_score && (
-                  <span className="text-sm text-muted-foreground">
-                    Score : {studentAttendance.confidence_score}%
-                  </span>
-                )}
-                <Button size="sm" variant="outline" className="ml-auto gap-2" onClick={() => setVerifyOpen(true)}>
-                  <ScanFace className="h-4 w-4" /> Re-vérifier
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">Validez votre présence par reconnaissance faciale.</p>
-                <Button onClick={() => setVerifyOpen(true)} className="gap-2">
-                  <ScanFace className="h-4 w-4" /> Vérifier ma présence
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              <Badge variant={studentAttendance.status === "present" ? "default" : "secondary"}>
+                {studentAttendance.status}
+              </Badge>
+              {studentAttendance.confidence_score && (
+                <span className="text-sm text-muted-foreground">
+                  Score : {studentAttendance.confidence_score}%
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      <FaceVerifyDialog sessionId={id} open={verifyOpen} onOpenChange={setVerifyOpen} />
-      {/* Vérification faciale gérée globalement dans le layout _authenticated */}
+      {/* Vérification faciale déclenchée par l'enseignant, gérée par GlobalFaceCheckListener */}
 
       {canManageSession && (
         <div className="mb-6">
