@@ -216,7 +216,24 @@ function SessionDetail() {
         </Card>
       )}
 
-      {role === "student" && myEnrollment && (
+      {role === "student" && myEnrollment && !faceLoading && !hasFaceProfile && (
+        <Card className="mb-6 border-primary/40">
+          <CardHeader><CardTitle className="font-display">Photo de référence requise</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Avant de valider votre présence, vous devez enregistrer une photo de référence.
+              Elle servira à vous reconnaître à chaque connexion.
+            </p>
+            <Link to="/face-setup">
+              <Button className="gap-2">
+                <Camera className="h-4 w-4" /> Ajouter ma photo
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {role === "student" && myEnrollment && hasFaceProfile && (
         <Card className="mb-6">
           <CardHeader><CardTitle className="font-display">Ma présence</CardTitle></CardHeader>
           <CardContent>
