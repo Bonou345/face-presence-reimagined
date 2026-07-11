@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, primaryRole } from "@/lib/auth";
@@ -69,6 +69,51 @@ function SessionDetail() {
       return data ?? [];
     },
   });
+
+  // Realtime: refresh enrolled/attendances when face-check results come in
+  useEffect(() => {
+    if (!canManageSession) return;
+    const ch = supabase
+      .channel(`session-live-${id}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "attendances", filter: `session_id=eq.${id}` },
+        () => qc.invalidateQueries({ queryKey: ["session-attendances", id] }))
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "class_enrollments" },
+        () => qc.invalidateQueries({ queryKey: ["session-enrolled", session?.class_id] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, session?.class_id, canManageSession, qc]);
+
+  // Profiles for any students that have attendance but are not (yet) in enrolled list
+  const extraStudentIds = useMemo(() => {
+    const enrolledIds = new Set((enrolled ?? []).map((e: any) => e.student_id));
+    return Array.from(new Set((attendances ?? []).map((a: any) => a.student_id).filter((sid: string) => !enrolledIds.has(sid))));
+  }, [enrolled, attendances]);
+
+  const { data: extraProfiles } = useQuery({
+    queryKey: ["session-extra-profiles", id, extraStudentIds],
+    enabled: canManageSession && extraStudentIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", extraStudentIds);
+      return data ?? [];
+    },
+  });
+
+  const rosterRows = useMemo(() => {
+    const base = (enrolled ?? []).map((e: any) => ({
+      student_id: e.student_id,
+      profile: e.profiles,
+    }));
+    const extras = (extraProfiles ?? []).map((p: any) => ({
+      student_id: p.id,
+      profile: { full_name: p.full_name, email: p.email },
+    }));
+    return [...base, ...extras];
+  }, [enrolled, extraProfiles]);
 
   const { data: myEnrollment } = useQuery({
     queryKey: ["my-enrollment", session?.class_id, user?.id],
@@ -226,7 +271,7 @@ function SessionDetail() {
       {canManageSession && (
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">Liste de présence ({enrolled?.length ?? 0} élèves)</CardTitle>
+            <CardTitle className="font-display">Liste de présence ({rosterRows.length} élèves)</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -240,11 +285,11 @@ function SessionDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {enrolled?.map((e: any) => {
+                {rosterRows.map((e) => {
                   const att = attendances?.find((a: any) => a.student_id === e.student_id);
                   return (
                     <TableRow key={e.student_id}>
-                      <TableCell className="font-medium">{e.profiles?.full_name || e.profiles?.email}</TableCell>
+                      <TableCell className="font-medium">{e.profile?.full_name || e.profile?.email}</TableCell>
                       <TableCell>
                         <Badge variant={att?.status === "present" ? "default" : att?.status === "absent" ? "destructive" : "secondary"}>
                           {att?.status ?? "—"}
@@ -268,7 +313,7 @@ function SessionDetail() {
                     </TableRow>
                   );
                 })}
-                {enrolled?.length === 0 && (
+                {rosterRows.length === 0 && (
                   <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Aucun élève inscrit dans cette classe.</TableCell></TableRow>
                 )}
               </TableBody>
