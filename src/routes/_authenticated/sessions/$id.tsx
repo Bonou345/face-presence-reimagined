@@ -202,13 +202,14 @@ function SessionDetail() {
           {session.zoom_meeting_id ? (
             <JoinZoomButton
               sessionId={id}
-              canJoin={canJoinAsStaff || canStudentJoinZoom}
-              blockedReason={
+              hint={
                 canJoinAsStaff
                   ? undefined
                   : !hasFaceProfile
                   ? "Enregistrez d'abord votre photo de référence."
-                  : "Vérification faciale requise avant de rejoindre."
+                  : !hasStudentFaceVerification
+                  ? "Vérification faciale requise avant de rejoindre."
+                  : undefined
               }
             />
           ) : canManageSession ? (
