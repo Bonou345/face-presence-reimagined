@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, primaryRole } from "@/lib/auth";
-import { createZoomMeetingForSession } from "@/lib/zoom.functions";
+import { createZoomMeetingForSession, getSessionJoinUrl } from "@/lib/zoom.functions";
 import { sessionHeartbeat, sessionLeave } from "@/lib/attendance.functions";
 import { FaceVerifyDialog } from "@/components/FaceVerifyDialog";
 import { StudentFaceCheckListener } from "@/components/StudentFaceCheckListener";
