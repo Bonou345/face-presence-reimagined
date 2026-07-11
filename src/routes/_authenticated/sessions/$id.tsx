@@ -311,13 +311,7 @@ function RegenerateZoomButton({ sessionId }: { sessionId: string }) {
   );
 }
 
-function JoinZoomButton({
-  sessionId,
-  hint,
-}: {
-  sessionId: string;
-  hint?: string;
-}) {
+function JoinZoomButton({ sessionId }: { sessionId: string }) {
   const [pending, setPending] = useState(false);
   const getUrl = useServerFn(getSessionJoinUrl);
 
@@ -325,14 +319,12 @@ function JoinZoomButton({
     <Button
       className="gap-2"
       disabled={pending}
-      title={hint}
       onClick={async () => {
         setPending(true);
         try {
-          // Le serveur recalcule les droits à chaque clic (source de vérité).
           const r = await getUrl({ data: { sessionId } });
           if (!r.ok) {
-            toast.error(r.error ?? hint ?? "Accès Zoom refusé.");
+            toast.error(r.error ?? "Accès Zoom refusé.");
             return;
           }
           window.open(r.joinUrl, "_blank", "noopener,noreferrer");
