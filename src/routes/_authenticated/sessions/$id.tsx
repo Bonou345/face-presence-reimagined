@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw, UserPlus } from "lucide-react";
+import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw, UserPlus, Camera } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
