@@ -191,6 +191,7 @@ export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
         confidence_score: Number(similarity.toFixed(2)),
         joined_at: now,
         last_seen_at: now,
+        updated_at: now,
       } as never,
       { onConflict: "session_id,student_id" },
     );
