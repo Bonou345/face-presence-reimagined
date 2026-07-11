@@ -147,12 +147,10 @@ export const deleteZoomMeeting = createServerFn({ method: "POST" })
  * Retourne l'URL Zoom d'une session UNIQUEMENT si :
  * - l'utilisateur est l'enseignant/un enseignant lié à la classe/un admin, OU
  * - l'utilisateur est un élève avec une présence "present" par reconnaissance
- *   faciale datant de moins de FACE_VERIFY_MAX_AGE_MIN minutes.
+ *   faciale pour cette session.
  * Sinon renvoie { ok: false, error } avec un code interne, et journalise la
  * tentative (autorisée ou refusée) dans `zoom_access_logs`.
  */
-const FACE_VERIFY_MAX_AGE_MIN = 15;
-
 export const getSessionJoinUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -198,7 +196,7 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
     // Élève : vérification faciale récente requise
     const { data: att } = await supabaseAdmin
       .from("attendances")
-      .select("status, verification_method, updated_at")
+      .select("status, verification_method")
       .eq("session_id", data.sessionId)
       .eq("student_id", userId)
       .maybeSingle();
@@ -208,14 +206,6 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
       return {
         ok: false as const,
         error: "Présence non vérifiée. Validez votre présence par reconnaissance faciale avant de rejoindre.",
-      };
-    }
-    const ageMin = (Date.now() - new Date(att.updated_at as string).getTime()) / 60000;
-    if (ageMin > FACE_VERIFY_MAX_AGE_MIN) {
-      await log(false, "verification_expired");
-      return {
-        ok: false as const,
-        error: `Vérification expirée (>${FACE_VERIFY_MAX_AGE_MIN} min). Refaites la vérification faciale.`,
       };
     }
 
