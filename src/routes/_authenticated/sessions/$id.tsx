@@ -136,30 +136,7 @@ function SessionDetail() {
   });
 
   const studentAttendance = attendances?.find((a: any) => a.student_id === user?.id);
-  const hasStudentFaceVerification =
-    role === "student" &&
-    studentAttendance?.verification_method === "facial_recognition" &&
-    (studentAttendance.status === "present" || studentAttendance.status === "partial");
-  const isStudentChecked = !!hasStudentFaceVerification;
-  // Note: l'accès Zoom est recalculé côté serveur au clic (getSessionJoinUrl).
 
-
-  // Heartbeat toutes les 30s + signal de départ
-  useEffect(() => {
-    if (!isStudentChecked) return;
-    const tick = () => { heartbeat({ data: { sessionId: id } }).catch(() => {}); };
-    const iv = setInterval(tick, 30_000);
-    tick();
-    const onUnload = () => {
-      leave({ data: { sessionId: id } }).catch(() => {});
-    };
-    window.addEventListener("beforeunload", onUnload);
-    return () => {
-      clearInterval(iv);
-      window.removeEventListener("beforeunload", onUnload);
-      leave({ data: { sessionId: id } }).catch(() => {});
-    };
-  }, [isStudentChecked, id, heartbeat, leave]);
 
   if (isLoading) return <div className="p-10 text-sm text-muted-foreground">Chargement…</div>;
   if (!session) return <div className="p-10">Session introuvable.</div>;
