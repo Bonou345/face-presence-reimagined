@@ -28,8 +28,13 @@ export const startFaceCheckRound = createServerFn({ method: "POST" })
 
     let authorized = sess.teacher_id === userId;
     if (!authorized) {
-      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-      authorized = !!isAdmin;
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      authorized = !!adminRole;
     }
     if (!authorized && sess.class_id) {
       const { data: link } = await supabase
