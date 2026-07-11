@@ -122,7 +122,8 @@ function SessionsPage() {
 }
 
 function CreateSessionDialog() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const role = primaryRole(roles);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -133,9 +134,14 @@ function CreateSessionDialog() {
   const [threshold, setThreshold] = useState(80);
 
   const { data: classes } = useQuery({
-    queryKey: ["classes-for-select", user?.id],
+    queryKey: ["classes-for-select", role, user?.id],
     enabled: !!user,
     queryFn: async () => {
+      if (role === "admin") {
+        const { data } = await supabase.from("classes").select("id, name").order("name");
+        return data ?? [];
+      }
+
       const { data: assignments } = await supabase
         .from("class_teachers")
         .select("class_id")
