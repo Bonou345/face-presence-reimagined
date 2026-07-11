@@ -241,9 +241,19 @@ export const submitFaceCheckResult = createServerFn({ method: "POST" })
     );
     if (insErr) throw new Error(insErr.message);
 
-    // Si succès -> met aussi à jour la présence globale
+    // Si succès -> auto-inscription à la classe (si absent) + mise à jour de la présence globale
     if (matched) {
       const now = new Date().toISOString();
+      const classId = (round as { sessions?: { class_id?: string | null } | null }).sessions?.class_id;
+      if (classId) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("class_enrollments")
+          .upsert(
+            { class_id: classId, student_id: userId } as never,
+            { onConflict: "class_id,student_id", ignoreDuplicates: true },
+          );
+      }
       await supabase.from("attendances").upsert(
         {
           session_id: round.session_id,
