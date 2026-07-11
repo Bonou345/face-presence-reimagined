@@ -23,7 +23,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: ["admin", "teacher", "student"] },
   { to: "/sessions", label: "Sessions", icon: Calendar, roles: ["admin", "teacher", "student"] },
-  { to: "/classes", label: "Classes", icon: GraduationCap, roles: ["admin", "teacher"] },
+  { to: "/classes", label: "Classes", icon: GraduationCap, roles: ["admin", "teacher", "student"] },
   { to: "/reports", label: "Rapports", icon: BarChart3, roles: ["admin", "teacher"] },
   { to: "/users", label: "Utilisateurs", icon: Users, roles: ["admin"] },
   { to: "/attendance", label: "Mes présences", icon: ClipboardList, roles: ["student"] },
