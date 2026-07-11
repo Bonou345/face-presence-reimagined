@@ -39,7 +39,7 @@ function SessionDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sessions")
-        .select("*, classes(name, level)")
+        .select("id, class_id, teacher_id, title, description, status, scheduled_start, scheduled_end, zoom_meeting_id, classes(name, level)")
         .eq("id", id).single();
       if (error) throw error;
       return data;
