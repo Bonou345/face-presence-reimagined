@@ -61,6 +61,7 @@ function SessionDetail() {
     },
   });
   const canManageSession = role === "admin" || isOwnerTeacher || !!teacherAssignment;
+  const canJoinAsStaff = role === "admin" || role === "teacher";
 
   const { data: attendances } = useQuery({
     queryKey: ["session-attendances", id],
