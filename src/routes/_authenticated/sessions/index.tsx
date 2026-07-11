@@ -33,7 +33,7 @@ function SessionsPage() {
   const qc = useQueryClient();
 
   const { data: sessions, isLoading } = useQuery({
-    queryKey: ["sessions"],
+    queryKey: ["sessions", role, user?.id],
     queryFn: async () => {
       let query = supabase
         .from("sessions")
@@ -133,13 +133,18 @@ function CreateSessionDialog() {
   const [threshold, setThreshold] = useState(80);
 
   const { data: classes } = useQuery({
-    queryKey: ["classes-for-select"],
+    queryKey: ["classes-for-select", user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("classes")
-        .select("id, name")
-        .or(`created_by.eq.${user!.id},class_teachers.teacher_id.eq.${user!.id}`)
-        .order("name");
+      const { data: assignments } = await supabase
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", user!.id);
+      const classIds = (assignments ?? []).map((a) => a.class_id).filter(Boolean);
+      const filter = classIds.length > 0
+        ? `created_by.eq.${user!.id},id.in.(${classIds.join(",")})`
+        : `created_by.eq.${user!.id}`;
+      const { data } = await supabase.from("classes").select("id, name").or(filter).order("name");
       return data ?? [];
     },
   });
