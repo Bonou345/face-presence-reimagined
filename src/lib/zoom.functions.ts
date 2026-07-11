@@ -186,22 +186,12 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
     }
 
     // Enseignant/admin : accès direct sans vérification faciale
-    const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (session.teacher_id === userId || isAdmin) {
+    const [{ data: isAdmin }, { data: isTeacher }] = await Promise.all([
+      supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "admin" }),
+      supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "teacher" }),
+    ]);
+    if (isAdmin || isTeacher || session.teacher_id === userId) {
       await log(true, "teacher_or_admin");
-      return { ok: true as const, joinUrl: session.zoom_join_url };
-    }
-    const { data: ct } = await supabaseAdmin
-      .from("class_teachers")
-      .select("id")
-      .eq("class_id", session.class_id)
-      .eq("teacher_id", userId)
-      .maybeSingle();
-    if (ct) {
-      await log(true, "class_teacher");
       return { ok: true as const, joinUrl: session.zoom_join_url };
     }
 
