@@ -100,6 +100,20 @@ function SessionDetail() {
     },
   });
 
+  const { data: myFaceProfile, isLoading: faceLoading } = useQuery({
+    queryKey: ["my-face-profile", user?.id],
+    enabled: !!user && role === "student",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("face_profiles")
+        .select("id, rekognition_face_id")
+        .eq("student_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const hasFaceProfile = !!myFaceProfile?.rekognition_face_id;
+
   const joinClass = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
