@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -68,6 +68,34 @@ function SessionDetail() {
         .eq("class_id", session!.class_id);
       return data ?? [];
     },
+  });
+
+  const { data: myEnrollment } = useQuery({
+    queryKey: ["my-enrollment", session?.class_id, user?.id],
+    enabled: !!session?.class_id && !!user && role === "student",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_enrollments")
+        .select("id")
+        .eq("class_id", session!.class_id)
+        .eq("student_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const joinClass = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("class_enrollments")
+        .insert({ class_id: session!.class_id, student_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vous avez rejoint la session");
+      qc.invalidateQueries({ queryKey: ["my-enrollment", session?.class_id, user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const updateStatus = useMutation({
@@ -144,7 +172,21 @@ function SessionDetail() {
         </div>
       </div>
 
-      {role === "student" && (
+      {role === "student" && !myEnrollment && (
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="font-display">Rejoindre la session</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Vous n'êtes pas encore inscrit à cette classe. Rejoignez-la pour valider votre présence.
+            </p>
+            <Button onClick={() => joinClass.mutate()} disabled={joinClass.isPending} className="gap-2">
+              <UserPlus className="h-4 w-4" /> {joinClass.isPending ? "Inscription…" : "Rejoindre"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {role === "student" && myEnrollment && (
         <Card className="mb-6">
           <CardHeader><CardTitle className="font-display">Ma présence</CardTitle></CardHeader>
           <CardContent>
