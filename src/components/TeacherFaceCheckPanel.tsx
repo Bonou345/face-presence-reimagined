@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { startFaceCheckRound, endFaceCheckRound } from "@/lib/face-check.functions";
+import { startFaceCheckRound, endFaceCheckRound, correctAttendanceManually } from "@/lib/face-check.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -190,6 +190,7 @@ export function TeacherFaceCheckPanel({ sessionId }: Props) {
                     {r.similarity != null && <span>{Number(r.similarity).toFixed(0)}%</span>}
                     {r.error && <span className="text-destructive">{r.error}</span>}
                     <span>{format(new Date(r.created_at), "HH:mm:ss", { locale: fr })}</span>
+                    <ManualCorrect sessionId={sessionId} studentId={r.student_id} />
                   </div>
                 </div>
               ))}
@@ -198,6 +199,43 @@ export function TeacherFaceCheckPanel({ sessionId }: Props) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function ManualCorrect({ sessionId, studentId }: { sessionId: string; studentId: string }) {
+  const qc = useQueryClient();
+  const correct = useServerFn(correctAttendanceManually);
+  const [pending, setPending] = useState<"present" | "partial" | "absent" | null>(null);
+
+  async function apply(status: "present" | "partial" | "absent") {
+    setPending(status);
+    try {
+      const res = await correct({ data: { sessionId, studentId, status } });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Présence corrigée");
+      qc.invalidateQueries({ queryKey: ["session-attendances", sessionId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" disabled={pending !== null} onClick={() => apply("present")}>
+        {pending === "present" ? <Loader2 className="h-3 w-3 animate-spin" /> : "P"}
+      </Button>
+      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" disabled={pending !== null} onClick={() => apply("partial")}>
+        {pending === "partial" ? <Loader2 className="h-3 w-3 animate-spin" /> : "½"}
+      </Button>
+      <Button size="sm" variant="outline" className="h-6 px-2 text-[10px]" disabled={pending !== null} onClick={() => apply("absent")}>
+        {pending === "absent" ? <Loader2 className="h-3 w-3 animate-spin" /> : "A"}
+      </Button>
+    </div>
   );
 }
 
