@@ -44,7 +44,7 @@ function SessionDetail() {
 
   // Tout enseignant peut être hôte de n'importe quelle session Zoom.
   const canManageSession = role === "admin" || role === "teacher";
-  const canJoinAsStaff = role === "admin" || role === "teacher";
+  
 
   const { data: attendances } = useQuery({
     queryKey: ["session-attendances", id],
