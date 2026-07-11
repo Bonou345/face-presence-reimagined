@@ -201,7 +201,12 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
       .eq("student_id", userId)
       .maybeSingle();
 
-    if (!att || att.status !== "present" || att.verification_method !== "facial_recognition") {
+    const hasFaceVerifiedAttendance =
+      !!att &&
+      att.verification_method === "facial_recognition" &&
+      (att.status === "present" || att.status === "partial");
+
+    if (!hasFaceVerifiedAttendance) {
       await log(false, "not_verified");
       return {
         ok: false as const,
