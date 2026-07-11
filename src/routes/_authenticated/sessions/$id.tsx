@@ -153,15 +153,15 @@ function SessionDetail() {
   });
 
   const studentAttendance = attendances?.find((a: any) => a.student_id === user?.id);
-  const isStudentChecked = role === "student" && studentAttendance?.status === "present";
-  const FACE_VERIFY_MAX_AGE_MS = 15 * 60 * 1000;
+  const hasStudentFaceVerification =
+    role === "student" &&
+    studentAttendance?.verification_method === "facial_recognition" &&
+    (studentAttendance.status === "present" || studentAttendance.status === "partial");
+  const isStudentChecked = !!hasStudentFaceVerification;
   const canStudentJoinZoom =
     role === "student" &&
     !!studentAttendance &&
-    studentAttendance.status === "present" &&
-    studentAttendance.verification_method === "facial_recognition" &&
-    !!studentAttendance.updated_at &&
-    Date.now() - new Date(studentAttendance.updated_at).getTime() <= FACE_VERIFY_MAX_AGE_MS;
+    !!hasStudentFaceVerification;
 
   // Heartbeat toutes les 30s + signal de départ
   useEffect(() => {

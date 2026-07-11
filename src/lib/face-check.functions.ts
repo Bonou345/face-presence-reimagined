@@ -138,6 +138,7 @@ export const submitFaceCheckResult = createServerFn({ method: "POST" })
           confidence_score: similarity,
           joined_at: now,
           last_seen_at: now,
+          updated_at: now,
         },
         { onConflict: "session_id,student_id" },
       );
