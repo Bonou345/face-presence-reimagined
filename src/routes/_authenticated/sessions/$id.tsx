@@ -46,21 +46,8 @@ function SessionDetail() {
     },
   });
 
-  const isOwnerTeacher = role === "teacher" && !!session && session.teacher_id === user?.id;
-  const { data: teacherAssignment } = useQuery({
-    queryKey: ["session-teacher-assignment", session?.class_id, user?.id],
-    enabled: !!session?.class_id && !!user && role === "teacher" && !isOwnerTeacher,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("class_teachers")
-        .select("id")
-        .eq("class_id", session!.class_id)
-        .eq("teacher_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
-  const canManageSession = role === "admin" || isOwnerTeacher || !!teacherAssignment;
+  // Tout enseignant peut être hôte de n'importe quelle session Zoom.
+  const canManageSession = role === "admin" || role === "teacher";
   const canJoinAsStaff = role === "admin" || role === "teacher";
 
   const { data: attendances } = useQuery({
