@@ -158,10 +158,8 @@ function SessionDetail() {
     studentAttendance?.verification_method === "facial_recognition" &&
     (studentAttendance.status === "present" || studentAttendance.status === "partial");
   const isStudentChecked = !!hasStudentFaceVerification;
-  const canStudentJoinZoom =
-    role === "student" &&
-    !!studentAttendance &&
-    !!hasStudentFaceVerification;
+  // Note: l'accès Zoom est recalculé côté serveur au clic (getSessionJoinUrl).
+
 
   // Heartbeat toutes les 30s + signal de départ
   useEffect(() => {
