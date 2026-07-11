@@ -142,3 +142,93 @@ export const deleteZoomMeeting = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/**
+ * Retourne l'URL Zoom d'une session UNIQUEMENT si :
+ * - l'utilisateur est l'enseignant/un enseignant lié à la classe/un admin, OU
+ * - l'utilisateur est un élève avec une présence "present" par reconnaissance
+ *   faciale datant de moins de FACE_VERIFY_MAX_AGE_MIN minutes.
+ * Sinon renvoie { ok: false, error } avec un code interne, et journalise la
+ * tentative (autorisée ou refusée) dans `zoom_access_logs`.
+ */
+const FACE_VERIFY_MAX_AGE_MIN = 15;
+
+export const getSessionJoinUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ sessionId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const log = async (allowed: boolean, reason: string) => {
+      await supabaseAdmin.from("zoom_access_logs").insert({
+        session_id: data.sessionId,
+        user_id: userId,
+        allowed,
+        reason,
+      } as never);
+    };
+
+    const { data: session, error: sErr } = await supabaseAdmin
+      .from("sessions")
+      .select("id, class_id, teacher_id, zoom_join_url")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (sErr || !session) {
+      await log(false, "session_not_found");
+      return { ok: false as const, error: "Session introuvable." };
+    }
+    if (!session.zoom_join_url) {
+      await log(false, "no_zoom_url");
+      return { ok: false as const, error: "Lien Zoom non disponible." };
+    }
+
+    // Enseignant/admin : accès direct sans vérification faciale
+    const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (session.teacher_id === userId || isAdmin) {
+      await log(true, "teacher_or_admin");
+      return { ok: true as const, joinUrl: session.zoom_join_url };
+    }
+    const { data: ct } = await supabaseAdmin
+      .from("class_teachers")
+      .select("id")
+      .eq("class_id", session.class_id)
+      .eq("teacher_id", userId)
+      .maybeSingle();
+    if (ct) {
+      await log(true, "class_teacher");
+      return { ok: true as const, joinUrl: session.zoom_join_url };
+    }
+
+    // Élève : vérification faciale récente requise
+    const { data: att } = await supabaseAdmin
+      .from("attendances")
+      .select("status, verification_method, updated_at")
+      .eq("session_id", data.sessionId)
+      .eq("student_id", userId)
+      .maybeSingle();
+
+    if (!att || att.status !== "present" || att.verification_method !== "facial_recognition") {
+      await log(false, "not_verified");
+      return {
+        ok: false as const,
+        error: "Présence non vérifiée. Validez votre présence par reconnaissance faciale avant de rejoindre.",
+      };
+    }
+    const ageMin = (Date.now() - new Date(att.updated_at as string).getTime()) / 60000;
+    if (ageMin > FACE_VERIFY_MAX_AGE_MIN) {
+      await log(false, "verification_expired");
+      return {
+        ok: false as const,
+        error: `Vérification expirée (>${FACE_VERIFY_MAX_AGE_MIN} min). Refaites la vérification faciale.`,
+      };
+    }
+
+    await log(true, "face_verified");
+    return { ok: true as const, joinUrl: session.zoom_join_url };
+  });
