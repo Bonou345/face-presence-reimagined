@@ -42,9 +42,9 @@ function Dashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, hint }: { icon: typeof Calendar; label: string; value: string | number; hint?: string }) {
-  return (
-    <Card>
+function StatCard({ icon: Icon, label, value, hint, to }: { icon: typeof Calendar; label: string; value: string | number; hint?: string; to?: string }) {
+  const inner = (
+    <Card className={to ? "transition hover:shadow-elev cursor-pointer" : undefined}>
       <CardContent className="flex items-start gap-4 p-6">
         <div className="grid h-11 w-11 place-items-center rounded-lg bg-primary-soft text-primary">
           <Icon className="h-5 w-5" />
@@ -57,6 +57,8 @@ function StatCard({ icon: Icon, label, value, hint }: { icon: typeof Calendar; l
       </CardContent>
     </Card>
   );
+  if (to) return <Link to={to as any}>{inner}</Link>;
+  return inner;
 }
 
 function AdminStats() {
@@ -79,9 +81,9 @@ function AdminStats() {
   });
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <StatCard icon={Users} label="Utilisateurs" value={data?.users ?? "—"} />
-      <StatCard icon={GraduationCap} label="Classes" value={data?.classes ?? "—"} />
-      <StatCard icon={Video} label="Sessions" value={data?.sessions ?? "—"} />
+      <StatCard icon={Users} label="Utilisateurs" value={data?.users ?? "—"} to="/users" />
+      <StatCard icon={GraduationCap} label="Classes" value={data?.classes ?? "—"} to="/classes" />
+      <StatCard icon={Video} label="Sessions" value={data?.sessions ?? "—"} to="/sessions" />
       <StatCard icon={CheckCircle2} label="Présences validées" value={data?.presences ?? "—"} />
     </div>
   );

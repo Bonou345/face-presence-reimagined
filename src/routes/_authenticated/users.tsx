@@ -15,9 +15,11 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Shield, ShieldOff, UserPlus, Link as LinkIcon } from "lucide-react";
+import { ShieldOff, Link as LinkIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { primaryRole } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { adminDeleteUser } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({ meta: [{ title: "Utilisateurs — FacePresence" }] }),
@@ -35,7 +37,9 @@ function UsersPage() {
 }
 
 function AdminUsersPanel() {
+  const { user } = useAuth();
   const qc = useQueryClient();
+  const deleteUserFn = useServerFn(adminDeleteUser);
   const { data: users } = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
@@ -63,6 +67,14 @@ function AdminUsersPanel() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success("Rôle retiré"); },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      await deleteUserFn({ data: { userId } });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["all-users"] }); toast.success("Utilisateur supprimé"); },
+    onError: (e: any) => toast.error(e.message),
   });
 
   return (
@@ -106,14 +118,27 @@ function AdminUsersPanel() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Select onValueChange={(v) => addRole.mutate({ userId: u.id, role: v })}>
-                      <SelectTrigger className="ml-auto w-40"><SelectValue placeholder="+ Rôle" /></SelectTrigger>
-                      <SelectContent>
-                        {["admin", "teacher", "student", "parent"].filter((r: any) => !u.roles.includes(r)).map((r: any) => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-end gap-2">
+                      <Select onValueChange={(v) => addRole.mutate({ userId: u.id, role: v })}>
+                        <SelectTrigger className="w-32"><SelectValue placeholder="+ Rôle" /></SelectTrigger>
+                        <SelectContent>
+                          {["admin", "teacher", "student", "parent"].filter((r: any) => !u.roles.includes(r)).map((r: any) => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-destructive"
+                        disabled={u.id === user?.id}
+                        onClick={() => {
+                          if (confirm(`Supprimer définitivement ${u.full_name || u.email} ?`)) deleteUser.mutate(u.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
