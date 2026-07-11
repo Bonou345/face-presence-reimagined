@@ -280,10 +280,7 @@ function SessionDetail() {
       )}
 
       <FaceVerifyDialog sessionId={id} open={verifyOpen} onOpenChange={setVerifyOpen} />
-
-      {role === "student" && user && (
-        <StudentFaceCheckListener sessionId={id} studentId={user.id} />
-      )}
+      {/* Vérification faciale gérée globalement dans le layout _authenticated */}
 
       {canManageSession && (
         <div className="mb-6">
