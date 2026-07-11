@@ -7,8 +7,8 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "FacePresence — Présences par reconnaissance faciale pour cours en ligne" },
       { name: "description", content: "Une plateforme intégrée pour créer des sessions Zoom et vérifier automatiquement la présence des élèves grâce à la reconnaissance faciale." },
-      { property: "og:title", content: "FacePresence" },
-      { property: "og:description", content: "Présences automatisées et sécurisées pour l'enseignement numérique." },
+      { property: "og:title", content: "FacePresence — Présences par reconnaissance faciale pour cours en ligne" },
+      { property: "og:description", content: "Une plateforme intégrée pour créer des sessions Zoom et vérifier automatiquement la présence des élèves grâce à la reconnaissance faciale." },
     ],
   }),
   component: Landing,
