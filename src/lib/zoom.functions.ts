@@ -171,7 +171,7 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
 
     const { data: session, error: sErr } = await supabaseAdmin
       .from("sessions")
-      .select("id, class_id, teacher_id, zoom_join_url")
+      .select("id, class_id, teacher_id, zoom_join_url, zoom_start_url")
       .eq("id", data.sessionId)
       .maybeSingle();
     if (sErr || !session) {
@@ -183,14 +183,17 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Lien Zoom non disponible." };
     }
 
-    // Enseignant/admin : accès direct
+    // Enseignant/admin : accès en tant qu'hôte (start_url) pour toute session.
     const [{ data: isAdmin }, { data: isTeacher }] = await Promise.all([
       supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "admin" }),
       supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "teacher" }),
     ]);
     if (isAdmin || isTeacher || session.teacher_id === userId) {
-      await log(true, "teacher_or_admin");
-      return { ok: true as const, joinUrl: session.zoom_join_url };
+      await log(true, "teacher_or_admin_host");
+      return {
+        ok: true as const,
+        joinUrl: session.zoom_start_url ?? session.zoom_join_url,
+      };
     }
 
     // Élève : accès libre au lien Zoom. La vérification faciale est déclenchée
