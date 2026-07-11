@@ -182,6 +182,24 @@ export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
     }
 
     const now = new Date().toISOString();
+
+    // Auto-inscription à la classe de la session si l'élève n'y est pas déjà
+    const { data: sessRow } = await supabase
+      .from("sessions")
+      .select("class_id")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    const classId = (sessRow as { class_id?: string | null } | null)?.class_id;
+    if (classId) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin
+        .from("class_enrollments")
+        .upsert(
+          { class_id: classId, student_id: userId } as never,
+          { onConflict: "class_id,student_id", ignoreDuplicates: true },
+        );
+    }
+
     const { error } = await supabase.from("attendances").upsert(
       {
         session_id: data.sessionId,
