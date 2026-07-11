@@ -21,10 +21,27 @@ export const startFaceCheckRound = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: sess, error: sErr } = await supabase
       .from("sessions")
-      .select("id, teacher_id, face_similarity_threshold")
+      .select("id, teacher_id, class_id, face_similarity_threshold")
       .eq("id", data.sessionId).maybeSingle();
     if (sErr) throw new Error(sErr.message);
-    if (!sess || sess.teacher_id !== userId) throw new Error("Non autorisé.");
+    if (!sess) throw new Error("Session introuvable.");
+
+    let authorized = sess.teacher_id === userId;
+    if (!authorized) {
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      authorized = !!isAdmin;
+    }
+    if (!authorized && sess.class_id) {
+      const { data: link } = await supabase
+        .from("class_teachers")
+        .select("teacher_id")
+        .eq("class_id", sess.class_id)
+        .eq("teacher_id", userId)
+        .maybeSingle();
+      authorized = !!link;
+    }
+    if (!authorized) throw new Error("Non autorisé.");
+
 
     const { data: round, error } = await supabase
       .from("face_check_rounds")
