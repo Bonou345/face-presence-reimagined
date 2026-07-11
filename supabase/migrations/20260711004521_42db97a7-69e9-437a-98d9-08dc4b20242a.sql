@@ -1,0 +1,1 @@
+CREATE POLICY "sessions_read_all_authenticated" ON public.sessions FOR SELECT TO authenticated USING (true);
