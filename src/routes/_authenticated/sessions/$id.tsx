@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw, UserPlus } from "lucide-react";
+import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw, UserPlus, Camera } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -99,6 +99,20 @@ function SessionDetail() {
       return data;
     },
   });
+
+  const { data: myFaceProfile, isLoading: faceLoading } = useQuery({
+    queryKey: ["my-face-profile", user?.id],
+    enabled: !!user && role === "student",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("face_profiles")
+        .select("id, rekognition_face_id")
+        .eq("student_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const hasFaceProfile = !!myFaceProfile?.rekognition_face_id;
 
   const joinClass = useMutation({
     mutationFn: async () => {
@@ -202,7 +216,24 @@ function SessionDetail() {
         </Card>
       )}
 
-      {role === "student" && myEnrollment && (
+      {role === "student" && myEnrollment && !faceLoading && !hasFaceProfile && (
+        <Card className="mb-6 border-primary/40">
+          <CardHeader><CardTitle className="font-display">Photo de référence requise</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Avant de valider votre présence, vous devez enregistrer une photo de référence.
+              Elle servira à vous reconnaître à chaque connexion.
+            </p>
+            <Link to="/face-setup">
+              <Button className="gap-2">
+                <Camera className="h-4 w-4" /> Ajouter ma photo
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {role === "student" && myEnrollment && hasFaceProfile && (
         <Card className="mb-6">
           <CardHeader><CardTitle className="font-display">Ma présence</CardTitle></CardHeader>
           <CardContent>
