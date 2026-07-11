@@ -514,6 +514,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_enrollable_students: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "teacher" | "student" | "parent"

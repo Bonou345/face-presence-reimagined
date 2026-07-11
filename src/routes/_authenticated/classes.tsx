@@ -208,14 +208,24 @@ function EnrollDialog({ classId }: { classId: string }) {
   const [studentId, setStudentId] = useState("");
 
   const { data: students } = useQuery({
-    queryKey: ["students-for-enroll"],
+    queryKey: ["students-for-enroll", classId],
     enabled: open,
     queryFn: async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "student");
-      const ids = (roles ?? []).map((r: any) => r.user_id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from("profiles").select("id, full_name, email").in("id", ids);
+      const { data, error } = await supabase.rpc("list_enrollable_students");
+      if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const { data: alreadyEnrolled } = useQuery({
+    queryKey: ["enrolled-ids", classId],
+    enabled: open,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_enrollments")
+        .select("student_id")
+        .eq("class_id", classId);
+      return new Set((data ?? []).map((r: any) => r.student_id));
     },
   });
 
@@ -227,6 +237,7 @@ function EnrollDialog({ classId }: { classId: string }) {
     onSuccess: () => {
       toast.success("Élève inscrit");
       qc.invalidateQueries({ queryKey: ["class-enrollments", classId] });
+      qc.invalidateQueries({ queryKey: ["enrolled-ids", classId] });
       setOpen(false); setStudentId("");
     },
     onError: (e: any) => toast.error(e.message),
@@ -242,7 +253,12 @@ function EnrollDialog({ classId }: { classId: string }) {
         <Select value={studentId} onValueChange={setStudentId}>
           <SelectTrigger><SelectValue placeholder="Choisir un élève" /></SelectTrigger>
           <SelectContent>
-            {students?.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>)}
+            {students?.filter((s: any) => !alreadyEnrolled?.has(s.id)).map((s: any) => (
+              <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>
+            ))}
+            {students && students.filter((s: any) => !alreadyEnrolled?.has(s.id)).length === 0 && (
+              <div className="p-2 text-xs text-muted-foreground">Aucun élève disponible.</div>
+            )}
           </SelectContent>
         </Select>
         <DialogFooter><Button disabled={!studentId || enroll.isPending} onClick={() => enroll.mutate()}>Inscrire</Button></DialogFooter>
