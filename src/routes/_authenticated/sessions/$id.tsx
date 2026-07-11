@@ -202,9 +202,9 @@ function SessionDetail() {
           {session.zoom_meeting_id ? (
             <JoinZoomButton
               sessionId={id}
-              canJoin={canManageSession || canStudentJoinZoom}
+              canJoin={canJoinAsStaff || canStudentJoinZoom}
               blockedReason={
-                canManageSession
+                canJoinAsStaff
                   ? undefined
                   : !hasFaceProfile
                   ? "Enregistrez d'abord votre photo de référence."
