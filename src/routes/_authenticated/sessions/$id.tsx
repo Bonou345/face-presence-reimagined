@@ -7,7 +7,7 @@ import { useAuth, primaryRole } from "@/lib/auth";
 import { createZoomMeetingForSession, getSessionJoinUrl } from "@/lib/zoom.functions";
 import { sessionHeartbeat, sessionLeave } from "@/lib/attendance.functions";
 import { FaceVerifyDialog } from "@/components/FaceVerifyDialog";
-import { StudentFaceCheckListener } from "@/components/StudentFaceCheckListener";
+
 import { TeacherFaceCheckPanel } from "@/components/TeacherFaceCheckPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
