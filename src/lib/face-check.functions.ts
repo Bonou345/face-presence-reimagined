@@ -206,7 +206,7 @@ export const submitFaceCheckResult = createServerFn({ method: "POST" })
 
     const { data: round, error: rErr } = await supabase
       .from("face_check_rounds")
-      .select("id, session_id, ended_at, threshold")
+      .select("id, session_id, ended_at, threshold, sessions(class_id)")
       .eq("id", data.roundId).maybeSingle();
     if (rErr) throw new Error(rErr.message);
     if (!round) throw new Error("Vérification introuvable.");
