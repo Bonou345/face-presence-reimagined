@@ -44,40 +44,60 @@ export const createZoomMeetingForSession = createServerFn({ method: "POST" })
       ),
     );
 
-    const token = await getZoomAccessToken();
-    const res = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        topic: session.title,
-        type: 2, // scheduled meeting
-        start_time: new Date(session.scheduled_start).toISOString(),
-        duration: durationMin,
-        timezone: "UTC",
-        agenda: session.description ?? undefined,
-        settings: {
-          join_before_host: false,
-          waiting_room: true,
-          mute_upon_entry: true,
-          approval_type: 2,
-          auto_recording: "none",
-          meeting_authentication: false,
-        },
-      }),
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Zoom API a refusé la création (${res.status}): ${txt}`);
-    }
-    const meeting = (await res.json()) as {
+    let meeting: {
       id: number | string;
       join_url: string;
       start_url: string;
       password?: string;
     };
+
+    try {
+      const token = await getZoomAccessToken();
+      const res = await fetch("https://api.zoom.us/v2/users/me/meetings", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic: session.title,
+          type: 2, // scheduled meeting
+          start_time: new Date(session.scheduled_start).toISOString(),
+          duration: durationMin,
+          timezone: "UTC",
+          agenda: session.description ?? undefined,
+          settings: {
+            join_before_host: false,
+            waiting_room: true,
+            mute_upon_entry: true,
+            approval_type: 2,
+            auto_recording: "none",
+            meeting_authentication: false,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        return {
+          ok: false,
+          error: `Zoom API a refusé la création (${res.status}): ${txt}`,
+        };
+      }
+      meeting = (await res.json()) as {
+        id: number | string;
+        join_url: string;
+        start_url: string;
+        password?: string;
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "La création du lien Zoom a échoué.",
+      };
+    }
 
     // Update session with Zoom info (RLS: teacher owner or admin)
     const { error: updErr } = await supabase
@@ -92,6 +112,7 @@ export const createZoomMeetingForSession = createServerFn({ method: "POST" })
     if (updErr) throw new Error(updErr.message);
 
     return {
+      ok: true,
       meetingId: String(meeting.id),
       joinUrl: meeting.join_url,
       startUrl: meeting.start_url,
