@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CreateClassDialog } from "@/components/CreateClassDialog";
+import { GlobalFaceCheckListener } from "@/components/GlobalFaceCheckListener";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
@@ -155,6 +156,7 @@ function AuthLayout() {
           <Outlet />
         </main>
       </div>
+      <GlobalFaceCheckListener />
     </div>
   );
 }

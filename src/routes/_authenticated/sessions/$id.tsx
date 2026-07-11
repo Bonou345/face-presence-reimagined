@@ -7,7 +7,7 @@ import { useAuth, primaryRole } from "@/lib/auth";
 import { createZoomMeetingForSession, getSessionJoinUrl } from "@/lib/zoom.functions";
 import { sessionHeartbeat, sessionLeave } from "@/lib/attendance.functions";
 import { FaceVerifyDialog } from "@/components/FaceVerifyDialog";
-import { StudentFaceCheckListener } from "@/components/StudentFaceCheckListener";
+
 import { TeacherFaceCheckPanel } from "@/components/TeacherFaceCheckPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -280,10 +280,7 @@ function SessionDetail() {
       )}
 
       <FaceVerifyDialog sessionId={id} open={verifyOpen} onOpenChange={setVerifyOpen} />
-
-      {role === "student" && user && (
-        <StudentFaceCheckListener sessionId={id} studentId={user.id} />
-      )}
+      {/* Vérification faciale gérée globalement dans le layout _authenticated */}
 
       {canManageSession && (
         <div className="mb-6">
