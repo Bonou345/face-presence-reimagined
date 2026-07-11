@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, primaryRole } from "@/lib/auth";
-import { createZoomMeetingForSession } from "@/lib/zoom.functions";
+import { createZoomMeetingForSession, getSessionJoinUrl } from "@/lib/zoom.functions";
 import { sessionHeartbeat, sessionLeave } from "@/lib/attendance.functions";
 import { FaceVerifyDialog } from "@/components/FaceVerifyDialog";
 import { StudentFaceCheckListener } from "@/components/StudentFaceCheckListener";
@@ -39,7 +39,7 @@ function SessionDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sessions")
-        .select("*, classes(name, level)")
+        .select("id, class_id, teacher_id, title, description, status, scheduled_start, scheduled_end, zoom_meeting_id, classes(name, level)")
         .eq("id", id).single();
       if (error) throw error;
       return data;
@@ -153,6 +153,14 @@ function SessionDetail() {
 
   const studentAttendance = attendances?.find((a: any) => a.student_id === user?.id);
   const isStudentChecked = role === "student" && studentAttendance?.status === "present";
+  const FACE_VERIFY_MAX_AGE_MS = 15 * 60 * 1000;
+  const canStudentJoinZoom =
+    role === "student" &&
+    !!studentAttendance &&
+    studentAttendance.status === "present" &&
+    studentAttendance.verification_method === "facial_recognition" &&
+    !!studentAttendance.updated_at &&
+    Date.now() - new Date(studentAttendance.updated_at).getTime() <= FACE_VERIFY_MAX_AGE_MS;
 
   // Heartbeat toutes les 30s + signal de départ
   useEffect(() => {
@@ -190,10 +198,18 @@ function SessionDetail() {
           {session.description && <p className="mt-3 text-sm">{session.description}</p>}
         </div>
         <div className="flex gap-2">
-          {session.zoom_join_url ? (
-            <a href={session.zoom_join_url} target="_blank" rel="noreferrer">
-              <Button className="gap-2"><Video className="h-4 w-4" /> Rejoindre Zoom <ExternalLink className="h-3.5 w-3.5" /></Button>
-            </a>
+          {session.zoom_meeting_id ? (
+            <JoinZoomButton
+              sessionId={id}
+              canJoin={canManageSession || canStudentJoinZoom}
+              blockedReason={
+                canManageSession
+                  ? undefined
+                  : !hasFaceProfile
+                  ? "Enregistrez d'abord votre photo de référence."
+                  : "Vérification faciale requise avant de rejoindre."
+              }
+            />
           ) : canManageSession ? (
             <RegenerateZoomButton sessionId={id} />
           ) : (
@@ -359,6 +375,54 @@ function RegenerateZoomButton({ sessionId }: { sessionId: string }) {
     >
       <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} />
       {pending ? "Création…" : "Générer le lien Zoom"}
+    </Button>
+  );
+}
+
+function JoinZoomButton({
+  sessionId,
+  canJoin,
+  blockedReason,
+}: {
+  sessionId: string;
+  canJoin: boolean;
+  blockedReason?: string;
+}) {
+  const [pending, setPending] = useState(false);
+  const getUrl = useServerFn(getSessionJoinUrl);
+
+  if (!canJoin) {
+    return (
+      <Button variant="outline" disabled className="gap-2" title={blockedReason}>
+        <Video className="h-4 w-4" />
+        {blockedReason ?? "Vérification faciale requise avant de rejoindre"}
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      className="gap-2"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        try {
+          const r = await getUrl({ data: { sessionId } });
+          if (!r.ok) {
+            toast.error(r.error);
+            return;
+          }
+          window.open(r.joinUrl, "_blank", "noopener,noreferrer");
+        } catch (e: any) {
+          toast.error(e?.message ?? "Erreur d'accès Zoom");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <Video className="h-4 w-4" />
+      {pending ? "Ouverture…" : "Rejoindre Zoom"}
+      <ExternalLink className="h-3.5 w-3.5" />
     </Button>
   );
 }

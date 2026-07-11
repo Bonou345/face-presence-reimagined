@@ -457,6 +457,47 @@ export type Database = {
         }
         Relationships: []
       }
+      zoom_access_logs: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          id: string
+          ip: string | null
+          reason: string
+          session_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          allowed: boolean
+          created_at?: string
+          id?: string
+          ip?: string | null
+          reason: string
+          session_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          id?: string
+          ip?: string | null
+          reason?: string
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_access_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

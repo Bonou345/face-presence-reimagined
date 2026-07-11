@@ -37,7 +37,7 @@ function SessionsPage() {
     queryFn: async () => {
       let query = supabase
         .from("sessions")
-        .select("id, title, scheduled_start, scheduled_end, status, zoom_join_url, classes(name)")
+        .select("id, title, scheduled_start, scheduled_end, status, teacher_id, classes(name)")
         .order("scheduled_start", { ascending: false });
 
       if (role === "teacher" && user) {
