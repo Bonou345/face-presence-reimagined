@@ -83,7 +83,11 @@ export function TeacherFaceCheckPanel({ sessionId }: Props) {
   async function onStart() {
     setPending(true);
     try {
-      await start({ data: { sessionId, label: new Date().toLocaleTimeString("fr-FR") } });
+      const result = await start({ data: { sessionId, label: new Date().toLocaleTimeString("fr-FR") } });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       toast.success("Vérification lancée. Les élèves connectés reçoivent la demande.");
       qc.invalidateQueries({ queryKey: ["face-check-rounds", sessionId] });
     } catch (e) {
@@ -94,7 +98,11 @@ export function TeacherFaceCheckPanel({ sessionId }: Props) {
   async function onEnd(roundId: string) {
     setPending(true);
     try {
-      await end({ data: { roundId } });
+      const result = await end({ data: { roundId } });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["face-check-rounds", sessionId] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur");

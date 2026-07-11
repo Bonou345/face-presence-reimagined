@@ -10,11 +10,13 @@ export const getIntegrationsStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Accès réservé aux administrateurs");
+    const { data: adminRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!adminRole) throw new Error("Accès réservé aux administrateurs");
 
     const present = (name: string) => !!process.env[name];
 
