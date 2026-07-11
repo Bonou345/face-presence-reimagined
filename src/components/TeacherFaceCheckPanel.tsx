@@ -190,6 +190,7 @@ export function TeacherFaceCheckPanel({ sessionId }: Props) {
                     {r.similarity != null && <span>{Number(r.similarity).toFixed(0)}%</span>}
                     {r.error && <span className="text-destructive">{r.error}</span>}
                     <span>{format(new Date(r.created_at), "HH:mm:ss", { locale: fr })}</span>
+                    <ManualCorrect sessionId={sessionId} studentId={r.student_id} />
                   </div>
                 </div>
               ))}
