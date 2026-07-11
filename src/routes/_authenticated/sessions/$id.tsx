@@ -1,12 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, primaryRole } from "@/lib/auth";
 import { createZoomMeetingForSession, getSessionJoinUrl } from "@/lib/zoom.functions";
-import { sessionHeartbeat, sessionLeave } from "@/lib/attendance.functions";
-import { FaceVerifyDialog } from "@/components/FaceVerifyDialog";
 
 import { TeacherFaceCheckPanel } from "@/components/TeacherFaceCheckPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Calendar, Video, ExternalLink, ScanFace, RefreshCw, UserPlus, Camera } from "lucide-react";
+import { ArrowLeft, Video, ExternalLink, RefreshCw, UserPlus, Camera } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -30,9 +28,7 @@ function SessionDetail() {
   const { user, roles } = useAuth();
   const role = primaryRole(roles);
   const qc = useQueryClient();
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const heartbeat = useServerFn(sessionHeartbeat);
-  const leave = useServerFn(sessionLeave);
+
 
   const { data: session, isLoading } = useQuery({
     queryKey: ["session", id],
