@@ -271,7 +271,7 @@ function SessionDetail() {
       {canManageSession && (
         <Card>
           <CardHeader>
-            <CardTitle className="font-display">Liste de présence ({enrolled?.length ?? 0} élèves)</CardTitle>
+            <CardTitle className="font-display">Liste de présence ({rosterRows.length} élèves)</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -285,11 +285,11 @@ function SessionDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {enrolled?.map((e: any) => {
+                {rosterRows.map((e) => {
                   const att = attendances?.find((a: any) => a.student_id === e.student_id);
                   return (
                     <TableRow key={e.student_id}>
-                      <TableCell className="font-medium">{e.profiles?.full_name || e.profiles?.email}</TableCell>
+                      <TableCell className="font-medium">{e.profile?.full_name || e.profile?.email}</TableCell>
                       <TableCell>
                         <Badge variant={att?.status === "present" ? "default" : att?.status === "absent" ? "destructive" : "secondary"}>
                           {att?.status ?? "—"}
@@ -313,7 +313,7 @@ function SessionDetail() {
                     </TableRow>
                   );
                 })}
-                {enrolled?.length === 0 && (
+                {rosterRows.length === 0 && (
                   <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Aucun élève inscrit dans cette classe.</TableCell></TableRow>
                 )}
               </TableBody>
