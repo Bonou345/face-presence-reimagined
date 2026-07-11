@@ -378,3 +378,51 @@ function RegenerateZoomButton({ sessionId }: { sessionId: string }) {
     </Button>
   );
 }
+
+function JoinZoomButton({
+  sessionId,
+  canJoin,
+  blockedReason,
+}: {
+  sessionId: string;
+  canJoin: boolean;
+  blockedReason?: string;
+}) {
+  const [pending, setPending] = useState(false);
+  const getUrl = useServerFn(getSessionJoinUrl);
+
+  if (!canJoin) {
+    return (
+      <Button variant="outline" disabled className="gap-2" title={blockedReason}>
+        <Video className="h-4 w-4" />
+        {blockedReason ?? "Vérification faciale requise avant de rejoindre"}
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      className="gap-2"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        try {
+          const r = await getUrl({ data: { sessionId } });
+          if (!r.ok) {
+            toast.error(r.error);
+            return;
+          }
+          window.open(r.joinUrl, "_blank", "noopener,noreferrer");
+        } catch (e: any) {
+          toast.error(e?.message ?? "Erreur d'accès Zoom");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <Video className="h-4 w-4" />
+      {pending ? "Ouverture…" : "Rejoindre Zoom"}
+      <ExternalLink className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
