@@ -190,10 +190,18 @@ function SessionDetail() {
           {session.description && <p className="mt-3 text-sm">{session.description}</p>}
         </div>
         <div className="flex gap-2">
-          {session.zoom_join_url ? (
-            <a href={session.zoom_join_url} target="_blank" rel="noreferrer">
-              <Button className="gap-2"><Video className="h-4 w-4" /> Rejoindre Zoom <ExternalLink className="h-3.5 w-3.5" /></Button>
-            </a>
+          {session.zoom_meeting_id ? (
+            <JoinZoomButton
+              sessionId={id}
+              canJoin={canManageSession || canStudentJoinZoom}
+              blockedReason={
+                canManageSession
+                  ? undefined
+                  : !hasFaceProfile
+                  ? "Enregistrez d'abord votre photo de référence."
+                  : "Vérification faciale requise avant de rejoindre."
+              }
+            />
           ) : canManageSession ? (
             <RegenerateZoomButton sessionId={id} />
           ) : (
