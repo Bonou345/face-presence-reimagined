@@ -136,7 +136,7 @@ export function FaceVerifyDialog({ sessionId, open, onOpenChange, onSuccess }: P
         return;
       }
       toast.success(`Présence confirmée (${r.similarity}% similarité)`);
-      qc.invalidateQueries({ queryKey: ["session-attendances", sessionId] });
+      await qc.refetchQueries({ queryKey: ["session-attendances", sessionId] });
       onSuccess?.();
       onOpenChange(false);
     } catch (e) {
