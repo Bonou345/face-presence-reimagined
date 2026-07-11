@@ -208,14 +208,24 @@ function EnrollDialog({ classId }: { classId: string }) {
   const [studentId, setStudentId] = useState("");
 
   const { data: students } = useQuery({
-    queryKey: ["students-for-enroll"],
+    queryKey: ["students-for-enroll", classId],
     enabled: open,
     queryFn: async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "student");
-      const ids = (roles ?? []).map((r: any) => r.user_id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from("profiles").select("id, full_name, email").in("id", ids);
+      const { data, error } = await supabase.rpc("list_enrollable_students");
+      if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const { data: alreadyEnrolled } = useQuery({
+    queryKey: ["enrolled-ids", classId],
+    enabled: open,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_enrollments")
+        .select("student_id")
+        .eq("class_id", classId);
+      return new Set((data ?? []).map((r: any) => r.student_id));
     },
   });
 
