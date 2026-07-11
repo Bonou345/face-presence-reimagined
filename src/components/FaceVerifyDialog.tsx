@@ -130,6 +130,11 @@ export function FaceVerifyDialog({ sessionId, open, onOpenChange, onSuccess }: P
     setPending(true);
     try {
       const r = await verify({ data: { sessionId, imageDataUrl: captured } });
+      if (!r.ok) {
+        toast.error(r.error);
+        setCaptured(null);
+        return;
+      }
       toast.success(`Présence confirmée (${r.similarity}% similarité)`);
       qc.invalidateQueries({ queryKey: ["session-attendances", sessionId] });
       onSuccess?.();

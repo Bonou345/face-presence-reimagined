@@ -157,14 +157,13 @@ export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
     try {
       match = await searchRekognitionFace(rk, bytes, 80);
     } catch (e: unknown) {
-      throw new Error(rekognitionErrorMessage(e, rk.region));
+      return { ok: false as const, error: rekognitionErrorMessage(e, rk.region) };
     }
 
     const externalId = match.externalImageId;
     const similarity = match.similarity;
 
     if (!match || externalId !== userId || similarity < 80) {
-      // Marque comme pending pour audit, mais ne valide pas
       await supabase.from("attendances").upsert(
         {
           session_id: data.sessionId,
@@ -176,9 +175,10 @@ export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
         } as never,
         { onConflict: "session_id,student_id" },
       );
-      throw new Error(
-        `Visage non reconnu (similarité ${similarity.toFixed(0)}%). Vérifiez l'éclairage et réessayez.`,
-      );
+      return {
+        ok: false as const,
+        error: `Visage non reconnu (similarité ${similarity.toFixed(0)}%). Vérifiez l'éclairage et réessayez.`,
+      };
     }
 
     const now = new Date().toISOString();
@@ -194,7 +194,7 @@ export const verifyFaceAndCheckIn = createServerFn({ method: "POST" })
       } as never,
       { onConflict: "session_id,student_id" },
     );
-    if (error) throw new Error(error.message);
+    if (error) return { ok: false as const, error: error.message };
 
-    return { ok: true, similarity: Number(similarity.toFixed(2)) };
+    return { ok: true as const, similarity: Number(similarity.toFixed(2)) };
   });
