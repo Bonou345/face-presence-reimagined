@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Video, Calendar } from "lucide-react";
+import { Plus, Video, Calendar, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -95,29 +95,63 @@ function SessionsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sessions.map((s: any) => (
-            <Link key={s.id} to="/sessions/$id" params={{ id: s.id }}>
-              <Card className="h-full transition hover:shadow-elev">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Badge variant={s.status === "live" ? "default" : s.status === "ended" ? "secondary" : "outline"}>
-                      {s.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{s.classes?.name}</span>
-                  </div>
-                  <CardTitle className="font-display text-lg">{s.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {format(new Date(s.scheduled_start), "PPp", { locale: fr })}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <div key={s.id} className="relative">
+              <Link to="/sessions/$id" params={{ id: s.id }}>
+                <Card className="h-full transition hover:shadow-elev">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <Badge variant={s.status === "live" ? "default" : s.status === "ended" ? "secondary" : "outline"}>
+                        {s.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{s.classes?.name}</span>
+                    </div>
+                    <CardTitle className="font-display text-lg pr-8">{s.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {format(new Date(s.scheduled_start), "PPp", { locale: fr })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              {(role === "admin" || (role === "teacher" && s.teacher_id === user?.id)) && (
+                <DeleteSessionButton sessionId={s.id} title={s.title} />
+              )}
+            </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function DeleteSessionButton({ sessionId, title }: { sessionId: string; title: string }) {
+  const qc = useQueryClient();
+  const del = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Session supprimée");
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      className="absolute right-2 top-2 h-7 w-7 text-destructive bg-background/80 backdrop-blur"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm(`Supprimer la session « ${title} » ?`)) del.mutate();
+      }}
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
   );
 }
 

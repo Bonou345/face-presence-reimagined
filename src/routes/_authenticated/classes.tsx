@@ -144,6 +144,8 @@ function ClassesPage() {
 
 
 function ClassCard({ classRow, canManage }: { classRow: any; canManage: boolean }) {
+  const { roles } = useAuth();
+  const isAdmin = primaryRole(roles) === "admin";
   const qc = useQueryClient();
   const { data: enrollments } = useQuery({
     queryKey: ["class-enrollments", classRow.id],
@@ -167,12 +169,38 @@ function ClassCard({ classRow, canManage }: { classRow: any; canManage: boolean 
     },
   });
 
+  const deleteClass = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("classes").delete().eq("id", classRow.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Classe supprimée");
+      qc.invalidateQueries({ queryKey: ["classes-list"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="font-display">{classRow.name}</CardTitle>
-          <Badge variant="secondary">{enrollments?.length ?? 0} élèves</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{enrollments?.length ?? 0} élèves</Badge>
+            {isAdmin && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-destructive"
+                onClick={() => {
+                  if (confirm(`Supprimer la classe « ${classRow.name} » ?`)) deleteClass.mutate();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         {classRow.level && <p className="text-sm text-muted-foreground">{classRow.level}</p>}
       </CardHeader>
