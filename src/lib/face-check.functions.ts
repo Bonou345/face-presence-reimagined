@@ -61,19 +61,134 @@ export const startFaceCheckRound = createServerFn({ method: "POST" })
     return { ok: true, round };
   });
 
-/** Enseignant : clôt la vérification en cours. */
+/** Enseignant : clôt la vérification en cours et marque absents les élèves inscrits qui n'ont pas validé. */
 export const endFaceCheckRound = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({ roundId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { error } = await supabase
+    const { supabase, userId } = context;
+
+    const { data: round, error: rErr } = await supabase
       .from("face_check_rounds")
-      .update({ ended_at: new Date().toISOString() })
-      .eq("id", data.roundId);
-    if (error) throw new Error(error.message);
+      .select("id, session_id, ended_at")
+      .eq("id", data.roundId).maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!round) throw new Error("Vérification introuvable.");
+
+    const { data: sess } = await supabase
+      .from("sessions")
+      .select("id, teacher_id, class_id")
+      .eq("id", round.session_id).maybeSingle();
+    if (!sess) throw new Error("Session introuvable.");
+
+    let authorized = sess.teacher_id === userId;
+    if (!authorized) {
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      authorized = !!isAdmin;
+    }
+    if (!authorized && sess.class_id) {
+      const { data: link } = await supabase
+        .from("class_teachers").select("teacher_id")
+        .eq("class_id", sess.class_id).eq("teacher_id", userId).maybeSingle();
+      authorized = !!link;
+    }
+    if (!authorized) throw new Error("Non autorisé.");
+
+    if (!round.ended_at) {
+      const { error } = await supabase
+        .from("face_check_rounds")
+        .update({ ended_at: new Date().toISOString() })
+        .eq("id", data.roundId);
+      if (error) throw new Error(error.message);
+    }
+
+    // Marquer absents les inscrits sans capture "présent" pour ce round
+    if (sess.class_id) {
+      const { data: enrolled } = await supabase
+        .from("class_enrollments")
+        .select("student_id")
+        .eq("class_id", sess.class_id);
+      const studentIds = (enrolled ?? []).map((e) => e.student_id as string);
+
+      if (studentIds.length > 0) {
+        const { data: presentRows } = await supabase
+          .from("face_check_results")
+          .select("student_id")
+          .eq("round_id", data.roundId)
+          .eq("present", true);
+        const presentSet = new Set((presentRows ?? []).map((r) => r.student_id as string));
+        const absentIds = studentIds.filter((id) => !presentSet.has(id));
+
+        if (absentIds.length > 0) {
+          const now = new Date().toISOString();
+          const payload = absentIds.map((sid) => ({
+            session_id: round.session_id,
+            student_id: sid,
+            status: "absent" as const,
+            verification_method: "facial_recognition" as const,
+            updated_at: now,
+          }));
+          await supabase
+            .from("attendances")
+            .upsert(payload as never, { onConflict: "session_id,student_id" });
+        }
+      }
+    }
+
+    return { ok: true };
+  });
+
+/** Enseignant : correction manuelle de la présence d'un élève sur une session. */
+export const correctAttendanceManually = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      sessionId: z.string().uuid(),
+      studentId: z.string().uuid(),
+      status: z.enum(["present", "partial", "absent"]),
+      notes: z.string().max(500).optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: sess } = await supabase
+      .from("sessions")
+      .select("id, teacher_id, class_id")
+      .eq("id", data.sessionId).maybeSingle();
+    if (!sess) return { ok: false, error: "Session introuvable." };
+
+    let authorized = sess.teacher_id === userId;
+    if (!authorized) {
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      authorized = !!isAdmin;
+    }
+    if (!authorized && sess.class_id) {
+      const { data: link } = await supabase
+        .from("class_teachers").select("teacher_id")
+        .eq("class_id", sess.class_id).eq("teacher_id", userId).maybeSingle();
+      authorized = !!link;
+    }
+    if (!authorized) return { ok: false, error: "Non autorisé." };
+
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("attendances").upsert(
+      {
+        session_id: data.sessionId,
+        student_id: data.studentId,
+        status: data.status,
+        verification_method: "manual",
+        notes: data.notes ?? "Correction manuelle enseignant",
+        updated_at: now,
+        ...(data.status === "present" || data.status === "partial"
+          ? { last_seen_at: now }
+          : {}),
+      } as never,
+      { onConflict: "session_id,student_id" },
+    );
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   });
 
