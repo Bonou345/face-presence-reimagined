@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/sessions/")({
 });
 
 function SessionsPage() {
-  const { roles } = useAuth();
+  const { user, roles } = useAuth();
   const role = primaryRole(roles);
   const canCreate = role === "teacher" || role === "admin";
   const qc = useQueryClient();
@@ -35,10 +35,23 @@ function SessionsPage() {
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["sessions"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("sessions")
         .select("id, title, scheduled_start, scheduled_end, status, zoom_join_url, classes(name)")
         .order("scheduled_start", { ascending: false });
+
+      if (role === "teacher" && user) {
+        const { data: assignments } = await supabase
+          .from("class_teachers")
+          .select("class_id")
+          .eq("teacher_id", user.id);
+        const classIds = (assignments ?? []).map((a) => a.class_id).filter(Boolean);
+        query = classIds.length > 0
+          ? query.or(`teacher_id.eq.${user.id},class_id.in.(${classIds.join(",")})`)
+          : query.eq("teacher_id", user.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -122,7 +135,11 @@ function CreateSessionDialog() {
   const { data: classes } = useQuery({
     queryKey: ["classes-for-select"],
     queryFn: async () => {
-      const { data } = await supabase.from("classes").select("id, name").order("name");
+      const { data } = await supabase
+        .from("classes")
+        .select("id, name")
+        .or(`created_by.eq.${user!.id},class_teachers.teacher_id.eq.${user!.id}`)
+        .order("name");
       return data ?? [];
     },
   });
