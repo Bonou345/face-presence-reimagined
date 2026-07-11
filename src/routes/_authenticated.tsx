@@ -156,6 +156,7 @@ function AuthLayout() {
           <Outlet />
         </main>
       </div>
+      <GlobalFaceCheckListener />
     </div>
   );
 }
