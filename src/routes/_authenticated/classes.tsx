@@ -237,6 +237,7 @@ function EnrollDialog({ classId }: { classId: string }) {
     onSuccess: () => {
       toast.success("Élève inscrit");
       qc.invalidateQueries({ queryKey: ["class-enrollments", classId] });
+      qc.invalidateQueries({ queryKey: ["enrolled-ids", classId] });
       setOpen(false); setStudentId("");
     },
     onError: (e: any) => toast.error(e.message),
