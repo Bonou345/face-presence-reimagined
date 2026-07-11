@@ -70,6 +70,34 @@ function SessionDetail() {
     },
   });
 
+  const { data: myEnrollment } = useQuery({
+    queryKey: ["my-enrollment", session?.class_id, user?.id],
+    enabled: !!session?.class_id && !!user && role === "student",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("class_enrollments")
+        .select("id")
+        .eq("class_id", session!.class_id)
+        .eq("student_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const joinClass = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("class_enrollments")
+        .insert({ class_id: session!.class_id, student_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vous avez rejoint la session");
+      qc.invalidateQueries({ queryKey: ["my-enrollment", session?.class_id, user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ studentId, status }: { studentId: string; status: "present" | "partial" | "absent" | "pending" }) => {
       const existing = attendances?.find((a: any) => a.student_id === studentId);
