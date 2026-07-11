@@ -183,7 +183,7 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Lien Zoom non disponible." };
     }
 
-    // Enseignant/admin : accès direct sans vérification faciale
+    // Enseignant/admin : accès direct
     const [{ data: isAdmin }, { data: isTeacher }] = await Promise.all([
       supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "admin" }),
       supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "teacher" }),
@@ -193,27 +193,8 @@ export const getSessionJoinUrl = createServerFn({ method: "POST" })
       return { ok: true as const, joinUrl: session.zoom_join_url };
     }
 
-    // Élève : vérification faciale récente requise
-    const { data: att } = await supabaseAdmin
-      .from("attendances")
-      .select("status, verification_method")
-      .eq("session_id", data.sessionId)
-      .eq("student_id", userId)
-      .maybeSingle();
-
-    const hasFaceVerifiedAttendance =
-      !!att &&
-      att.verification_method === "facial_recognition" &&
-      (att.status === "present" || att.status === "partial");
-
-    if (!hasFaceVerifiedAttendance) {
-      await log(false, "not_verified");
-      return {
-        ok: false as const,
-        error: "Présence non vérifiée. Validez votre présence par reconnaissance faciale avant de rejoindre.",
-      };
-    }
-
-    await log(true, "face_verified");
+    // Élève : accès libre au lien Zoom. La vérification faciale est déclenchée
+    // séparément par l'enseignant pendant la session via face_check_rounds.
+    await log(true, "student_join");
     return { ok: true as const, joinUrl: session.zoom_join_url };
   });
