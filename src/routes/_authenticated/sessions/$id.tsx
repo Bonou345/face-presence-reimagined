@@ -172,7 +172,21 @@ function SessionDetail() {
         </div>
       </div>
 
-      {role === "student" && (
+      {role === "student" && !myEnrollment && (
+        <Card className="mb-6">
+          <CardHeader><CardTitle className="font-display">Rejoindre la session</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Vous n'êtes pas encore inscrit à cette classe. Rejoignez-la pour valider votre présence.
+            </p>
+            <Button onClick={() => joinClass.mutate()} disabled={joinClass.isPending} className="gap-2">
+              <UserPlus className="h-4 w-4" /> {joinClass.isPending ? "Inscription…" : "Rejoindre"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {role === "student" && myEnrollment && (
         <Card className="mb-6">
           <CardHeader><CardTitle className="font-display">Ma présence</CardTitle></CardHeader>
           <CardContent>
