@@ -252,7 +252,12 @@ function EnrollDialog({ classId }: { classId: string }) {
         <Select value={studentId} onValueChange={setStudentId}>
           <SelectTrigger><SelectValue placeholder="Choisir un élève" /></SelectTrigger>
           <SelectContent>
-            {students?.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>)}
+            {students?.filter((s: any) => !alreadyEnrolled?.has(s.id)).map((s: any) => (
+              <SelectItem key={s.id} value={s.id}>{s.full_name || s.email}</SelectItem>
+            ))}
+            {students && students.filter((s: any) => !alreadyEnrolled?.has(s.id)).length === 0 && (
+              <div className="p-2 text-xs text-muted-foreground">Aucun élève disponible.</div>
+            )}
           </SelectContent>
         </Select>
         <DialogFooter><Button disabled={!studentId || enroll.isPending} onClick={() => enroll.mutate()}>Inscrire</Button></DialogFooter>
