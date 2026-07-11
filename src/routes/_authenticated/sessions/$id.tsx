@@ -46,7 +46,6 @@ function SessionDetail() {
     },
   });
 
-  const isOwnerTeacher = role === "teacher" && !!session && session.teacher_id === user?.id;
   // Tout enseignant peut être hôte de n'importe quelle session Zoom.
   const canManageSession = role === "admin" || role === "teacher";
   const canJoinAsStaff = role === "admin" || role === "teacher";
