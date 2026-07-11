@@ -46,24 +46,6 @@ function SessionDetail() {
     },
   });
 
-  const directTeacher = !!session && !!user && session.teacher_id === user.id;
-
-  const { data: myTeachingLink } = useQuery({
-    queryKey: ["session-teacher-link", session?.class_id, user?.id],
-    enabled: !!session?.class_id && !!user && role === "teacher" && !directTeacher,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("class_teachers")
-        .select("id")
-        .eq("class_id", session!.class_id)
-        .eq("teacher_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
-
-  const canManageSession = role === "admin" || directTeacher || !!myTeachingLink;
-
   const { data: attendances } = useQuery({
     queryKey: ["session-attendances", id],
     enabled: !!session,
@@ -78,7 +60,7 @@ function SessionDetail() {
 
   const { data: enrolled } = useQuery({
     queryKey: ["session-enrolled", session?.class_id],
-    enabled: !!session?.class_id && canManageSession,
+    enabled: !!session?.class_id && (role === "teacher" || role === "admin"),
     queryFn: async () => {
       const { data } = await supabase
         .from("class_enrollments")
@@ -182,7 +164,7 @@ function SessionDetail() {
             <a href={session.zoom_join_url} target="_blank" rel="noreferrer">
               <Button className="gap-2"><Video className="h-4 w-4" /> Rejoindre Zoom <ExternalLink className="h-3.5 w-3.5" /></Button>
             </a>
-          ) : canManageSession ? (
+          ) : (role === "teacher" || role === "admin") ? (
             <RegenerateZoomButton sessionId={id} />
           ) : (
             <Button variant="outline" disabled className="gap-2"><Video className="h-4 w-4" /> Lien Zoom à venir</Button>
@@ -240,13 +222,13 @@ function SessionDetail() {
         <StudentFaceCheckListener sessionId={id} studentId={user.id} />
       )}
 
-      {canManageSession && (
+      {(role === "teacher" || role === "admin") && (
         <div className="mb-6">
           <TeacherFaceCheckPanel sessionId={id} />
         </div>
       )}
 
-      {canManageSession && (
+      {(role === "teacher" || role === "admin") && (
         <Card>
           <CardHeader>
             <CardTitle className="font-display">Liste de présence ({enrolled?.length ?? 0} élèves)</CardTitle>

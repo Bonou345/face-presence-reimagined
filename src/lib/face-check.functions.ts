@@ -23,18 +23,13 @@ export const startFaceCheckRound = createServerFn({ method: "POST" })
       .from("sessions")
       .select("id, teacher_id, class_id, face_similarity_threshold")
       .eq("id", data.sessionId).maybeSingle();
-    if (sErr) return { ok: false, error: sErr.message };
-    if (!sess) return { ok: false, error: "Session introuvable." };
+    if (sErr) throw new Error(sErr.message);
+    if (!sess) throw new Error("Session introuvable.");
 
     let authorized = sess.teacher_id === userId;
     if (!authorized) {
-      const { data: adminRole } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-      authorized = !!adminRole;
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      authorized = !!isAdmin;
     }
     if (!authorized && sess.class_id) {
       const { data: link } = await supabase
@@ -45,9 +40,7 @@ export const startFaceCheckRound = createServerFn({ method: "POST" })
         .maybeSingle();
       authorized = !!link;
     }
-    if (!authorized) {
-      return { ok: false, error: "Non autorisé. Cette session appartient à un autre enseignant." };
-    }
+    if (!authorized) throw new Error("Non autorisé.");
 
 
     const { data: round, error } = await supabase
@@ -59,8 +52,8 @@ export const startFaceCheckRound = createServerFn({ method: "POST" })
         threshold: (sess as { face_similarity_threshold?: number }).face_similarity_threshold ?? 80,
       })
       .select("id, started_at, threshold").single();
-    if (error) return { ok: false, error: error.message };
-    return { ok: true, round };
+    if (error) throw new Error(error.message);
+    return round;
   });
 
 /** Enseignant : clôt la vérification en cours. */
@@ -75,7 +68,7 @@ export const endFaceCheckRound = createServerFn({ method: "POST" })
       .from("face_check_rounds")
       .update({ ended_at: new Date().toISOString() })
       .eq("id", data.roundId);
-    if (error) return { ok: false, error: error.message };
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
