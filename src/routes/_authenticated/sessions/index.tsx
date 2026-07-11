@@ -27,18 +27,31 @@ export const Route = createFileRoute("/_authenticated/sessions/")({
 });
 
 function SessionsPage() {
-  const { roles } = useAuth();
+  const { user, roles } = useAuth();
   const role = primaryRole(roles);
   const canCreate = role === "teacher" || role === "admin";
   const qc = useQueryClient();
 
   const { data: sessions, isLoading } = useQuery({
-    queryKey: ["sessions"],
+    queryKey: ["sessions", role, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("sessions")
         .select("id, title, scheduled_start, scheduled_end, status, zoom_join_url, classes(name)")
         .order("scheduled_start", { ascending: false });
+
+      if (role === "teacher" && user) {
+        const { data: assignments } = await supabase
+          .from("class_teachers")
+          .select("class_id")
+          .eq("teacher_id", user.id);
+        const classIds = (assignments ?? []).map((a) => a.class_id).filter(Boolean);
+        query = classIds.length > 0
+          ? query.or(`teacher_id.eq.${user.id},class_id.in.(${classIds.join(",")})`)
+          : query.eq("teacher_id", user.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -109,7 +122,8 @@ function SessionsPage() {
 }
 
 function CreateSessionDialog() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const role = primaryRole(roles);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -120,9 +134,23 @@ function CreateSessionDialog() {
   const [threshold, setThreshold] = useState(80);
 
   const { data: classes } = useQuery({
-    queryKey: ["classes-for-select"],
+    queryKey: ["classes-for-select", role, user?.id],
+    enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("classes").select("id, name").order("name");
+      if (role === "admin") {
+        const { data } = await supabase.from("classes").select("id, name").order("name");
+        return data ?? [];
+      }
+
+      const { data: assignments } = await supabase
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", user!.id);
+      const classIds = (assignments ?? []).map((a) => a.class_id).filter(Boolean);
+      const filter = classIds.length > 0
+        ? `created_by.eq.${user!.id},id.in.(${classIds.join(",")})`
+        : `created_by.eq.${user!.id}`;
+      const { data } = await supabase.from("classes").select("id, name").or(filter).order("name");
       return data ?? [];
     },
   });
