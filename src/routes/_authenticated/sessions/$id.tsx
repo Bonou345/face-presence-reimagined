@@ -70,6 +70,51 @@ function SessionDetail() {
     },
   });
 
+  // Realtime: refresh enrolled/attendances when face-check results come in
+  useEffect(() => {
+    if (!canManageSession) return;
+    const ch = supabase
+      .channel(`session-live-${id}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "attendances", filter: `session_id=eq.${id}` },
+        () => qc.invalidateQueries({ queryKey: ["session-attendances", id] }))
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "class_enrollments" },
+        () => qc.invalidateQueries({ queryKey: ["session-enrolled", session?.class_id] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, session?.class_id, canManageSession, qc]);
+
+  // Profiles for any students that have attendance but are not (yet) in enrolled list
+  const extraStudentIds = useMemo(() => {
+    const enrolledIds = new Set((enrolled ?? []).map((e: any) => e.student_id));
+    return Array.from(new Set((attendances ?? []).map((a: any) => a.student_id).filter((sid: string) => !enrolledIds.has(sid))));
+  }, [enrolled, attendances]);
+
+  const { data: extraProfiles } = useQuery({
+    queryKey: ["session-extra-profiles", id, extraStudentIds],
+    enabled: canManageSession && extraStudentIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", extraStudentIds);
+      return data ?? [];
+    },
+  });
+
+  const rosterRows = useMemo(() => {
+    const base = (enrolled ?? []).map((e: any) => ({
+      student_id: e.student_id,
+      profile: e.profiles,
+    }));
+    const extras = (extraProfiles ?? []).map((p: any) => ({
+      student_id: p.id,
+      profile: { full_name: p.full_name, email: p.email },
+    }));
+    return [...base, ...extras];
+  }, [enrolled, extraProfiles]);
+
   const { data: myEnrollment } = useQuery({
     queryKey: ["my-enrollment", session?.class_id, user?.id],
     enabled: !!session?.class_id && !!user && role === "student",
