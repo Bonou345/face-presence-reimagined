@@ -123,9 +123,13 @@ export function StudentFaceCheckListener({ sessionId, studentId }: Props) {
       setDone({ present: r.present, similarity: r.similarity });
       stream?.getTracks().forEach((t) => t.stop());
       setStream(null);
-      qc.invalidateQueries({ queryKey: ["session-attendances", sessionId] });
-      if (r.present) toast.success(`Présence confirmée (${r.similarity}%)`);
-      else toast.error(r.error || `Visage non reconnu (${r.similarity}%)`);
+      if (r.present) {
+        await qc.refetchQueries({ queryKey: ["session-attendances", sessionId] });
+        toast.success(`Présence confirmée (${r.similarity}%)`);
+      } else {
+        qc.invalidateQueries({ queryKey: ["session-attendances", sessionId] });
+      }
+      if (!r.present) toast.error(r.error || `Visage non reconnu (${r.similarity}%)`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Échec";
       setError(msg);
