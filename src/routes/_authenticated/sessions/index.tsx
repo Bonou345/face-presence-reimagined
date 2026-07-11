@@ -146,10 +146,9 @@ function CreateSessionDialog() {
 
       // Try to auto-create the Zoom meeting. If Zoom isn't configured yet,
       // the session is still created and the user is informed.
-      try {
-        await createZoom({ data: { sessionId: inserted.id } });
-      } catch (e: any) {
-        toast.warning(`Session créée, mais Zoom a échoué : ${e.message}`);
+      const zoomResult = await createZoom({ data: { sessionId: inserted.id } });
+      if (!zoomResult.ok) {
+        toast.warning(`Session créée, mais Zoom a échoué : ${zoomResult.error}`);
       }
     },
     onSuccess: () => {

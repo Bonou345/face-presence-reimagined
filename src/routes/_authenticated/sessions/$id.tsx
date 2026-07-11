@@ -254,9 +254,13 @@ function RegenerateZoomButton({ sessionId }: { sessionId: string }) {
       onClick={async () => {
         setPending(true);
         try {
-          await createZoom({ data: { sessionId } });
-          toast.success("Lien Zoom généré");
-          qc.invalidateQueries({ queryKey: ["session", sessionId] });
+          const result = await createZoom({ data: { sessionId } });
+          if (result.ok) {
+            toast.success("Lien Zoom généré");
+            qc.invalidateQueries({ queryKey: ["session", sessionId] });
+          } else {
+            toast.error(result.error);
+          }
         } catch (e: any) {
           toast.error(e.message);
         } finally {
