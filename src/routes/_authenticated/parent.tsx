@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, UserCircle2 } from "lucide-react";
+import { Search, UserCircle2, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "sonner";
+import { linkChildByMatricule } from "@/lib/parent-link.functions";
 
 export const Route = createFileRoute("/_authenticated/parent")({
   head: () => ({ meta: [{ title: "Suivi de mes enfants — FacePresence" }] }),
@@ -27,9 +31,22 @@ type Child = {
 
 function ParentPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [nameQ, setNameQ] = useState("");
   const [classQ, setClassQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [matricule, setMatricule] = useState("");
+  const linkFn = useServerFn(linkChildByMatricule);
+
+  const linkChild = useMutation({
+    mutationFn: async (m: string) => linkFn({ data: { matricule: m } }),
+    onSuccess: (res: any) => {
+      toast.success(`Enfant rattaché : ${res.student.full_name || res.student.email}`);
+      setMatricule("");
+      qc.invalidateQueries({ queryKey: ["parent-children", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   // Enfants liés au parent
   const { data: children } = useQuery({
@@ -92,6 +109,39 @@ function ParentPage() {
           Retrouvez votre enfant par son nom ou sa classe et consultez son historique de présence.
         </p>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" /> Rattacher un enfant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const m = matricule.trim();
+              if (m) linkChild.mutate(m);
+            }}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <div className="flex-1 space-y-2">
+              <Label>Matricule de l'élève</Label>
+              <Input
+                value={matricule}
+                onChange={(e) => setMatricule(e.target.value)}
+                placeholder="Ex : 2024HD001"
+              />
+              <p className="text-xs text-muted-foreground">
+                Demandez le matricule à votre enfant ou à l'établissement.
+              </p>
+            </div>
+            <Button type="submit" disabled={!matricule.trim() || linkChild.isPending}>
+              {linkChild.isPending ? "Ajout…" : "Rattacher"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card className="mb-6">
         <CardHeader>
