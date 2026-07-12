@@ -31,9 +31,22 @@ type Child = {
 
 function ParentPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [nameQ, setNameQ] = useState("");
   const [classQ, setClassQ] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [matricule, setMatricule] = useState("");
+  const linkFn = useServerFn(linkChildByMatricule);
+
+  const linkChild = useMutation({
+    mutationFn: async (m: string) => linkFn({ data: { matricule: m } }),
+    onSuccess: (res: any) => {
+      toast.success(`Enfant rattaché : ${res.student.full_name || res.student.email}`);
+      setMatricule("");
+      qc.invalidateQueries({ queryKey: ["parent-children", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   // Enfants liés au parent
   const { data: children } = useQuery({
