@@ -87,7 +87,6 @@ function SignIn() {
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [resetBusy, setResetBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,20 +95,6 @@ function SignIn() {
     setBusy(false);
     if (error) toast.error(error.message);
     else toast.success("Connecté");
-  }
-
-  async function onForgot() {
-    if (!email) {
-      toast.error("Entrez votre e-mail puis cliquez sur « Mot de passe oublié »");
-      return;
-    }
-    setResetBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setResetBusy(false);
-    if (error) toast.error(error.message);
-    else toast.success("E-mail de réinitialisation envoyé. Vérifiez votre boîte de réception.");
   }
 
   return (
@@ -125,17 +110,7 @@ function SignIn() {
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="pwd">Mot de passe</Label>
-              <button
-                type="button"
-                onClick={onForgot}
-                disabled={resetBusy}
-                className="text-xs font-medium text-primary hover:underline disabled:opacity-60"
-              >
-                {resetBusy ? "Envoi…" : "Mot de passe oublié ?"}
-              </button>
-            </div>
+            <Label htmlFor="pwd">Mot de passe</Label>
             <div className="relative">
               <Input
                 id="pwd"
