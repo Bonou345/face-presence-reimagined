@@ -113,6 +113,39 @@ function ParentPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" /> Rattacher un enfant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const m = matricule.trim();
+              if (m) linkChild.mutate(m);
+            }}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <div className="flex-1 space-y-2">
+              <Label>Matricule de l'élève</Label>
+              <Input
+                value={matricule}
+                onChange={(e) => setMatricule(e.target.value)}
+                placeholder="Ex : 2024HD001"
+              />
+              <p className="text-xs text-muted-foreground">
+                Demandez le matricule à votre enfant ou à l'établissement.
+              </p>
+            </div>
+            <Button type="submit" disabled={!matricule.trim() || linkChild.isPending}>
+              {linkChild.isPending ? "Ajout…" : "Rattacher"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
             <Search className="h-5 w-5 text-primary" /> Rechercher un enfant
           </CardTitle>
         </CardHeader>
